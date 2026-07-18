@@ -1,0 +1,16 @@
+node_modules/
+backend/db/*.db
+backend/db/*.db-journal
+backend/db/*.db-wal
+backend/db/*.db-shm
+backend/uploads/*
+!backend/uploads/.gitkeep
+.env
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+dist/
+build/
+coverage/
