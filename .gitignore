@@ -8,3 +8,5 @@ backend/uploads/*
 .DS_Store
 .vscode/
 .idea/
+frontend/dist/bundle.js
+frontend/dist/_stage.jsx
