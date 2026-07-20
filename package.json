@@ -1,6 +1,6 @@
 {
   "name": "basck-law",
-  "version": "1.1.2",
+  "version": "1.2.1",
   "description": "Plataforma SaaS juridica para advogados autonomos e pequenos escritorios - gestao de casos, clientes, prazos, documentos e financeiro",
   "main": "backend/server.js",
   "type": "commonjs",

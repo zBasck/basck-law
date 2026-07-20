@@ -134,6 +134,41 @@
       marcarPago: (id, d) => request(`/api/financeiro/${id}/marcar-pago`, { method: 'POST', body: d }),
       remover: (id) => request(`/api/financeiro/${id}`, { method: 'DELETE' }),
       csvUrl: () => '/api/financeiro/exportar.csv'
+    },
+
+    compromissos: {
+      listar: (params = {}) => {
+        const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+        return request('/api/compromissos' + (q ? '?' + q : ''));
+      },
+      proximos: (dias = 7) => request('/api/compromissos/proximos?dias=' + dias),
+      buscar: (id) => request('/api/compromissos/' + id),
+      criar: (d) => request('/api/compromissos', { method: 'POST', body: d }),
+      atualizar: (id, d) => request('/api/compromissos/' + id, { method: 'PUT', body: d }),
+      remover: (id) => request('/api/compromissos/' + id, { method: 'DELETE' })
+    },
+
+    kanban: {
+      listar: () => request('/api/kanban'),
+      criar: (d) => request('/api/kanban', { method: 'POST', body: d }),
+      mover: (id, coluna, posicao = 0) => request('/api/kanban/' + id + '/mover', { method: 'PUT', body: { coluna, posicao } }),
+      remover: (id) => request('/api/kanban/' + id, { method: 'DELETE' })
+    },
+
+    integracoes: {
+      tribunaisSuportados: () => request('/api/integracoes/tribunais'),
+      listar: () => request('/api/integracoes'),
+      buscar: (id) => request('/api/integracoes/' + id),
+      criar: (d) => request('/api/integracoes', { method: 'POST', body: d }),
+      atualizar: (id, d) => request('/api/integracoes/' + id, { method: 'PUT', body: d }),
+      remover: (id) => request('/api/integracoes/' + id, { method: 'DELETE' }),
+      consultar: (id) => request('/api/integracoes/' + id + '/consultar', { method: 'POST' }),
+      oab: {
+        listar: () => request('/api/integracoes/oab/listar'),
+        adicionar: (d) => request('/api/integracoes/oab', { method: 'POST', body: d }),
+        remover: (id) => request('/api/integracoes/oab/' + id, { method: 'DELETE' }),
+        verificar: () => request('/api/integracoes/oab/verificar', { method: 'POST' })
+      }
     }
   };
 

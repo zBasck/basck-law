@@ -1,40 +1,10 @@
-# dependencias
 node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-package-lock.json.bak
-
-# banco de dados local
-backend/db/*.db
-backend/db/*.db-journal
-backend/db/*.db-wal
-backend/db/*.db-shm
-
-# uploads locais (documentos dos clientes)
+*.db
+*.db-journal
 backend/uploads/*
 !backend/uploads/.gitkeep
-
-# bundle gerado (regenerado em npm start)
+frontend/dist/bundle.js
 frontend/dist/bundle.jsx
-!frontend/dist/.gitkeep
-
-# variaveis de ambiente
 .env
-.env.local
-.env.*.local
-
-# logs
-*.log
-logs/
-
-# SO
 .DS_Store
 Thumbs.db
-desktop.ini
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo

@@ -391,5 +391,219 @@
     );
   }
 
-  global.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm };
+
+  // Calculadora visual de prazo (com dias uteis / corridos)
+  function CalculadoraPrazo({ casoId, aoCalcular }) {
+    const [dataInicio, setDataInicio] = useState(new Date().toISOString().substring(0, 10));
+    const [dias, setDias] = useState(5);
+    const [uteis, setUteis] = useState(true);
+    const [resultado, setResultado] = useState(null);
+    const [erro, setErro] = useState('');
+
+    async function calcular() {
+      setErro('');
+      try {
+        const r = await BasckApi.prazos.calcular({
+          data_inicio: dataInicio,
+          dias: Number(dias),
+          tipo_dias: uteis ? 'uteis' : 'corridos',
+          caso_id: casoId
+        });
+        setResultado(r);
+        if (aoCalcular) aoCalcular(r);
+      } catch (e) {
+        setErro(e.message || 'Erro ao calcular');
+      }
+    }
+
+    useEffect(() => { calcular(); /* calcula ao abrir */ }, []);
+
+    return (
+      <div className="calc-prazo">
+        <div className="calc-row">
+          <Field label="Data inicial">
+            <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+          </Field>
+          <Field label="Dias">
+            <input type="number" min="1" max="365" value={dias} onChange={(e) => setDias(e.target.value)} />
+          </Field>
+          <Field label="Tipo">
+            <select value={uteis ? 'uteis' : 'corridos'} onChange={(e) => setUteis(e.target.value === 'uteis')}>
+              <option value="uteis">Uteis</option>
+              <option value="corridos">Corridos</option>
+            </select>
+          </Field>
+        </div>
+        <button type="button" className="btn ghost sm" onClick={calcular}>Calcular</button>
+        {erro && <div className="erro-msg">{erro}</div>}
+        {resultado && !erro && (
+          <div className="calc-resultado">
+            <div className="calc-resultado-data">
+              <span className="tiny">Vencimento:</span>
+              <strong>{new Date(resultado.data_vencimento + 'T12:00:00').toLocaleDateString('pt-BR')}</strong>
+            </div>
+            {resultado.dias_corridos && (
+              <div className="tiny">
+                {resultado.dias_corridos} dias corridos, {resultado.dias_uteis} dias uteis
+                {resultado.feriados > 0 && ', ' + resultado.feriados + ' feriado(s)'}
+              </div>
+            )}
+            {resultado.observacao && <div className="tiny">{resultado.observacao}</div>}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  function CompromissoForm({ inicial, onSalvar, onCancelar }) {
+    const casos = useCasosOptions();
+    const [dados, setDados] = useState(inicial || {
+      titulo: '', tipo: 'audiencia', data_hora: '', duracao_minutos: 60,
+      local: '', tribunal: '', sala: '', observacoes: '', caso_id: ''
+    });
+    function set(c, v) { setDados({ ...dados, [c]: v }); }
+    async function submit(e) {
+      e.preventDefault();
+      try {
+        const payload = { ...dados };
+        if (!payload.caso_id) payload.caso_id = null;
+        else payload.caso_id = Number(payload.caso_id);
+        payload.duracao_minutos = Number(payload.duracao_minutos);
+        const r = inicial && inicial.id
+          ? await BasckApi.compromissos.atualizar(inicial.id, payload)
+          : await BasckApi.compromissos.criar(payload);
+        onSalvar(r.compromisso);
+      } catch (err) { alert(err.message); }
+    }
+    return (
+      <form onSubmit={submit}>
+        <div className="modal-body">
+          <Field label="Titulo *"><input required value={dados.titulo} onChange={(e) => set('titulo', e.target.value)} maxLength={200} /></Field>
+          <div className="grid-2">
+            <Field label="Tipo">
+              <select value={dados.tipo} onChange={(e) => set('tipo', e.target.value)}>
+                <option value="audiencia">Audiencia</option>
+                <option value="reuniao">Reuniao</option>
+                <option value="prazo_judicial">Prazo judicial</option>
+                <option value="sessao">Sessao</option>
+                <option value="diligencia">Diligencia</option>
+                <option value="outro">Outro</option>
+              </select>
+            </Field>
+            <Field label="Data e hora *">
+              <input required type="datetime-local" value={dados.data_hora} onChange={(e) => set('data_hora', e.target.value)} />
+            </Field>
+          </div>
+          <div className="grid-2">
+            <Field label="Duracao (min)"><input type="number" min="15" step="15" value={dados.duracao_minutos} onChange={(e) => set('duracao_minutos', e.target.value)} /></Field>
+            <Field label="Caso (opcional)">
+              <select value={dados.caso_id || ''} onChange={(e) => set('caso_id', e.target.value)}>
+                <option value="">Sem caso</option>
+                {casos.map((c) => <option key={c.id} value={c.id}>{c.titulo}</option>)}
+              </select>
+            </Field>
+          </div>
+          <div className="grid-2">
+            <Field label="Local"><input value={dados.local || ''} onChange={(e) => set('local', e.target.value)} /></Field>
+            <Field label="Tribunal"><input value={dados.tribunal || ''} onChange={(e) => set('tribunal', e.target.value)} /></Field>
+          </div>
+          <Field label="Sala"><input value={dados.sala || ''} onChange={(e) => set('sala', e.target.value)} /></Field>
+          <Field label="Observacoes"><textarea value={dados.observacoes || ''} onChange={(e) => set('observacoes', e.target.value)} /></Field>
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">Salvar compromisso</button>
+        </div>
+      </form>
+    );
+  }
+
+  function IntegracaoForm({ inicial, onSalvar, onCancelar }) {
+    const [tribunais, setTribunais] = useState([]);
+    const [dados, setDados] = useState(inicial || {
+      tribunal: '', tipo_credencial: 'login_senha', identificador: '', segredo: '', apelido: ''
+    });
+    useEffect(() => {
+      BasckApi.integracoes.tribunaisSuportados().then((r) => setTribunais(r.tribunais || [])).catch(() => {});
+    }, []);
+    function set(c, v) { setDados({ ...dados, [c]: v }); }
+    async function submit(e) {
+      e.preventDefault();
+      try {
+        const r = inicial && inicial.id
+          ? await BasckApi.integracoes.atualizar(inicial.id, dados)
+          : await BasckApi.integracoes.criar(dados);
+        onSalvar(r.integracao);
+      } catch (err) { alert(err.message); }
+    }
+    return (
+      <form onSubmit={submit}>
+        <div className="modal-body">
+          <Field label="Tribunal *">
+            <select required value={dados.tribunal} onChange={(e) => set('tribunal', e.target.value)}>
+              <option value="">Selecione...</option>
+              {tribunais.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+          </Field>
+          <div className="grid-2">
+            <Field label="Apelido (opcional)"><input value={dados.apelido || ''} onChange={(e) => set('apelido', e.target.value)} placeholder="Ex: Conta principal" /></Field>
+            <Field label="Tipo de credencial *">
+              <select value={dados.tipo_credencial} onChange={(e) => set('tipo_credencial', e.target.value)}>
+                <option value="login_senha">Login e senha</option>
+                <option value="certificado_digital">Certificado digital</option>
+                <option value="oauth">OAuth</option>
+                <option value="api_key">API key</option>
+              </select>
+            </Field>
+          </div>
+          <Field label="Identificador * (CPF/OAB/login)">
+            <input required value={dados.identificador} onChange={(e) => set('identificador', e.target.value)} />
+          </Field>
+          <Field label="Segredo (criptografado antes de salvar)">
+            <input type="password" value={dados.segredo || ''} onChange={(e) => set('segredo', e.target.value)} placeholder={inicial ? 'Deixe em branco para manter' : ''} />
+          </Field>
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">Salvar integracao</button>
+        </div>
+      </form>
+    );
+  }
+
+  function OabForm({ onSalvar, onCancelar }) {
+    const [dados, setDados] = useState({ numero_oab: '', uf: 'SP' });
+    function set(c, v) { setDados({ ...dados, [c]: v }); }
+    async function submit(e) {
+      e.preventDefault();
+      try {
+        const r = await BasckApi.integracoes.oab.adicionar(dados);
+        onSalvar(r.oab);
+      } catch (err) { alert(err.message); }
+    }
+    return (
+      <form onSubmit={submit}>
+        <div className="modal-body">
+          <div className="grid-2">
+            <Field label="Numero da OAB *">
+              <input required value={dados.numero_oab} onChange={(e) => set('numero_oab', e.target.value)} placeholder="123456" />
+            </Field>
+            <Field label="UF *">
+              <select value={dados.uf} onChange={(e) => set('uf', e.target.value)}>
+                {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) =>
+                  <option key={u} value={u}>{u}</option>)}
+              </select>
+            </Field>
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">Adicionar para monitoramento</button>
+        </div>
+      </form>
+    );
+  }
+
+  global.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm,
+    CompromissoForm, IntegracaoForm, OabForm, CalculadoraPrazo };
 })(window);

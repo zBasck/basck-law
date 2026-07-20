@@ -5,9 +5,11 @@
 const fs = require('node:fs');
 const path = require('node:path');
 const { DatabaseSync } = require('node:sqlite');
+const MIGRATIONS = require('./migrations-v120');
 
 const DEFAULT_DB_PATH = path.join(__dirname, 'basck.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+const SCHEMA_V120_PATH = path.join(__dirname, 'schema-v120.sql');
 
 let _db = null;
 
@@ -22,22 +24,20 @@ function getDb() {
   return _db;
 }
 
-// Migrações aditivas: cada item tenta executar; se a coluna/tabela já existir, ignora.
-const MIGRATIONS = [
-  // v1.1.0 — auditoria do cálculo de prazo
-  { sql: "ALTER TABLE prazos ADD COLUMN calculo_detalhes TEXT", descricao: 'coluna calculo_detalhes em prazos' },
-  { sql: "ALTER TABLE prazos ADD COLUMN calculo_regra TEXT", descricao: 'coluna calculo_regra em prazos' }
-];
-
 function safeExec(db, sql) {
   try { db.exec(sql); return true; }
-  catch (e) { return false; } // já existe ou outro motivo não-bloqueante
+  catch (e) { return false; }
 }
 
 function initSchema() {
   const db = getDb();
   const schema = fs.readFileSync(SCHEMA_PATH, 'utf8');
   db.exec(schema);
+  // v1.2.0 — schema adicional
+  if (fs.existsSync(SCHEMA_V120_PATH)) {
+    const schemaV120 = fs.readFileSync(SCHEMA_V120_PATH, 'utf8');
+    db.exec(schemaV120);
+  }
   for (const m of MIGRATIONS) safeExec(db, m.sql);
   return db;
 }

@@ -708,5 +708,237 @@
     );
   }
 
-  global.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView };
+
+  // ===================== v1.2.0 — Views adicionais =====================
+
+  function CompromissosView() {
+    const [itens, setItens] = useState([]);
+    const [casos, setCasos] = useState([]);
+    const [filtro, setFiltro] = useState('proximos'); // proximos | hoje | atrasados | todos
+    const [modal, setModal] = useState(null);
+    function carregar() {
+      Promise.all([BasckApi.compromissos.listar(), BasckApi.casos.listar()])
+        .then(([a, b]) => { setItens(a.itens || []); setCasos(b.itens || []); })
+        .catch(() => {});
+    }
+    useEffect(carregar, []);
+    const hoje = new Date().toISOString().substring(0, 10);
+    const filtrados = itens.filter((c) => {
+      if (c.status !== 'agendado') return filtro === 'todos';
+      const d = c.data_hora.substring(0, 10);
+      if (filtro === 'proximos') return d >= hoje;
+      if (filtro === 'hoje') return d === hoje;
+      if (filtro === 'atrasados') return d < hoje;
+      return true;
+    });
+    function casosMap() { const m = {}; casos.forEach((c) => m[c.id] = c.titulo); return m; }
+    function tipoIcon(t) {
+      return ({ audiencia: '⚖️', reuniao: '👥', prazo_judicial: '⏰', sessao: '🏛️', diligencia: '📋', outro: '📌' })[t] || '📌';
+    }
+    return (
+      <div className="view">
+        <div className="view-head">
+          <h1 className="serif">Compromissos</h1>
+          <button className="btn primary" onClick={() => setModal({})}>+ Novo compromisso</button>
+        </div>
+        <div className="filtros">
+          {['proximos', 'hoje', 'atrasados', 'todos'].map((f) => (
+            <button key={f} className={'chip' + (filtro === f ? ' active' : '')} onClick={() => setFiltro(f)}>
+              {({ proximos: 'Próximos', hoje: 'Hoje', atrasados: 'Atrasados', todos: 'Todos' })[f]}
+            </button>
+          ))}
+        </div>
+        <div className="grid-cards">
+          {filtrados.length === 0 && <div className="empty">Nenhum compromisso nesta categoria.</div>}
+          {filtrados.map((c) => (
+            <div key={c.id} className={'compromisso-card' + (c.data_hora.substring(0, 10) < hoje ? ' atrasado' : '')}>
+              <div className="cc-head">
+                <span className="cc-icon">{tipoIcon(c.tipo)}</span>
+                <div className="cc-titulo">{c.titulo}</div>
+              </div>
+              <div className="cc-data">{new Date(c.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}</div>
+              {c.local && <div className="cc-local">📍 {c.local}{c.sala ? ' · Sala ' + c.sala : ''}</div>}
+              {c.caso_id && <div className="cc-caso">📁 {casosMap()[c.caso_id] || '—'}</div>}
+              <div className="cc-actions">
+                <button className="btn ghost sm" onClick={() => setModal(c)}>Editar</button>
+                <button className="btn ghost sm" onClick={async () => {
+                  if (!confirm('Remover este compromisso?')) return;
+                  await BasckApi.compromissos.remover(c.id); carregar();
+                }}>Remover</button>
+              </div>
+            </div>
+          ))}
+        </div>
+        {modal && <BasckModals.Modal titulo={modal.id ? 'Editar compromisso' : 'Novo compromisso'} onClose={() => setModal(null)} lg>
+          <BasckModals.CompromissoForm inicial={modal} onSalvar={() => { setModal(null); carregar(); }} onCancelar={() => setModal(null)} />
+        </BasckModals.Modal>}
+      </div>
+    );
+  }
+
+  function KanbanView() {
+    const [cartoes, setCartoes] = useState([]);
+    const [colunas, setColunas] = useState(['a_fazer', 'em_andamento', 'revisao', 'concluido']);
+    const [dragId, setDragId] = useState(null);
+    function carregar() {
+      BasckApi.kanban.listar().then((r) => {
+        setCartoes(r.itens || []);
+        if (r.colunas) setColunas(r.colunas);
+      }).catch(() => {});
+    }
+    useEffect(carregar, []);
+    const labels = { a_fazer: 'A fazer', em_andamento: 'Em andamento', revisao: 'Em revisão', concluido: 'Concluído' };
+    async function mover(cartaoId, colunaNova) {
+      // Atualização otimista
+      const antes = cartoes;
+      setCartoes(cartoes.map((c) => c.id === cartaoId ? { ...c, coluna: colunaNova } : c));
+      try { await BasckApi.kanban.mover(cartaoId, colunaNova); carregar(); }
+      catch (e) { alert(e.message); setCartoes(antes); }
+    }
+    function cartoesDaColuna(col) { return cartoes.filter((c) => c.coluna === col); }
+    return (
+      <div className="view kanban-view">
+        <div className="view-head">
+          <h1 className="serif">Kanban</h1>
+          <span className="muted tiny">{cartoes.length} cartoes</span>
+        </div>
+        <div className="kanban-board">
+          {colunas.map((col) => {
+            const lista = cartoesDaColuna(col);
+            return (
+              <div key={col} className={'kanban-coluna kanban-col-' + col}
+                onDragOver={(e) => { e.preventDefault(); e.currentTarget.classList.add('drag-over'); }}
+                onDragLeave={(e) => e.currentTarget.classList.remove('drag-over')}
+                onDrop={(e) => { e.preventDefault(); e.currentTarget.classList.remove('drag-over');
+                  if (dragId) { mover(dragId, col); setDragId(null); } }}>
+                <div className="kanban-col-head">
+                  <span className="kanban-col-titulo">{labels[col] || col}</span>
+                  <span className="kanban-col-count">{lista.length}</span>
+                </div>
+                <div className="kanban-col-body">
+                  {lista.map((c) => (
+                    <div key={c.id} className="kanban-cartao" draggable
+                      onDragStart={() => setDragId(c.id)}
+                      onDragEnd={() => setDragId(null)}>
+                      <div className="kanban-cartao-titulo">{c.titulo || '—'}</div>
+                      {c.caso && (
+                        <div className="kanban-cartao-meta">
+                          {c.caso.area && <span className="chip tiny">{c.caso.area}</span>}
+                          {c.caso.tribunal && <span className="chip tiny">{c.caso.tribunal}</span>}
+                        </div>
+                      )}
+                      {c.prazo && <div className="kanban-cartao-prazo tiny">⏰ {c.prazo}</div>}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    );
+  }
+
+  function IntegracoesView() {
+    const [itens, setItens] = useState([]);
+    const [oabs, setOabs] = useState([]);
+    const [modal, setModal] = useState(null);
+    const [modalOab, setModalOab] = useState(false);
+    const [resultado, setResultado] = useState(null);
+    function carregar() {
+      Promise.all([BasckApi.integracoes.listar(), BasckApi.integracoes.oab.listar()])
+        .then(([a, b]) => { setItens(a.itens || []); setOabs(b.itens || []); })
+        .catch(() => {});
+    }
+    useEffect(carregar, []);
+    async function consultar(id) {
+      try {
+        const r = await BasckApi.integracoes.consultar(id);
+        setResultado(r.resultado);
+        carregar();
+      } catch (e) { alert(e.message); }
+    }
+    async function verificarOabs() {
+      try {
+        const r = await BasckApi.integracoes.oab.verificar();
+        setOabs(r.itens || []);
+      } catch (e) { alert(e.message); }
+    }
+    return (
+      <div className="view">
+        <div className="view-head">
+          <h1 className="serif">Integrações com Tribunais</h1>
+          <div>
+            <button className="btn ghost" onClick={() => setModalOab(true)} style={{ marginRight: 8 }}>+ Monitorar OAB</button>
+            <button className="btn primary" onClick={() => setModal({})}>+ Nova integração</button>
+          </div>
+        </div>
+        <div className="card">
+          <h3>Integrações cadastradas</h3>
+          <p className="muted tiny">As credenciais são criptografadas com AES-256-GCM antes de salvar.</p>
+          {itens.length === 0 && <div className="empty">Nenhuma integração cadastrada.</div>}
+          <div className="grid-cards">
+            {itens.map((i) => (
+              <div key={i.id} className={'card-mini' + (i.ativo ? '' : ' desativado')}>
+                <div className="card-mini-titulo">{i.apelido || i.identificador}</div>
+                <div className="tiny muted">{i.tribunal} · {i.tipo_credencial}</div>
+                <div className="tiny muted">ID: {i.identificador}</div>
+                {i.ultima_consulta && <div className="tiny">Última consulta: {new Date(i.ultima_consulta).toLocaleString('pt-BR')}</div>}
+                <div className="cc-actions">
+                  <button className="btn ghost sm" disabled={!i.ativo} onClick={() => consultar(i.id)}>Consultar agora</button>
+                  <button className="btn ghost sm" onClick={() => setModal(i)}>Editar</button>
+                  <button className="btn ghost sm" onClick={async () => {
+                    if (!confirm('Remover esta integração?')) return;
+                    await BasckApi.integracoes.remover(i.id); carregar();
+                  }}>Remover</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div className="card">
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <h3>Monitoramento de OAB</h3>
+            <button className="btn ghost sm" onClick={verificarOabs}>Verificar agora</button>
+          </div>
+          {oabs.length === 0 && <div className="empty">Nenhuma OAB cadastrada para monitoramento.</div>}
+          <table className="tabela">
+            <thead><tr><th>Número</th><th>UF</th><th>Situação</th><th>Última verificação</th><th></th></tr></thead>
+            <tbody>
+              {oabs.map((o) => (
+                <tr key={o.id}>
+                  <td>{o.numero_oab}</td>
+                  <td>{o.uf}</td>
+                  <td><span className={'chip ' + (o.situacao === 'regular' ? 'ok' : 'warn')}>{o.situacao || 'pendente'}</span></td>
+                  <td>{o.ultima_verificacao ? new Date(o.ultima_verificacao).toLocaleString('pt-BR') : '—'}</td>
+                  <td><button className="btn ghost sm" onClick={async () => {
+                    if (!confirm('Remover esta OAB do monitoramento?')) return;
+                    await BasckApi.integracoes.oab.remover(o.id); carregar();
+                  }}>Remover</button></td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+
+        {modal && <BasckModals.Modal titulo={modal.id ? 'Editar integração' : 'Nova integração'} onClose={() => { setModal(null); setResultado(null); }} lg>
+          <BasckModals.IntegracaoForm inicial={modal} onSalvar={() => { setModal(null); carregar(); }} onCancelar={() => setModal(null)} />
+        </BasckModals.Modal>}
+
+        {modalOab && <BasckModals.Modal titulo="Monitorar OAB" onClose={() => setModalOab(false)}>
+          <BasckModals.OabForm onSalvar={() => { setModalOab(false); carregar(); }} onCancelar={() => setModalOab(false)} />
+        </BasckModals.Modal>}
+
+        {resultado && <BasckModals.Modal titulo="Resultado da consulta" onClose={() => setResultado(null)}>
+          <pre style={{ background: 'var(--bg-3)', padding: 16, borderRadius: 8, overflow: 'auto', maxHeight: 400, fontSize: 12 }}>
+            {JSON.stringify(resultado, null, 2)}
+          </pre>
+        </BasckModals.Modal>}
+      </div>
+    );
+  }
+
+  global.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView,
+    CompromissosView, KanbanView, IntegracoesView };
 })(window);

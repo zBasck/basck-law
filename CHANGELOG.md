@@ -1,7 +1,45 @@
+## [1.2.1] - 2026-07-20
+
+### Fixed
+- Correcao do middleware de autenticacao nas rotas `/compromissos`, `/kanban` e `/integracoes` que estavam com `Router.use()` recebendo um objeto em vez de uma funcao (causava `TypeError: Router.use() requires a middleware function` ao iniciar o servidor)
+
 # Changelog — Basck Law
 
 Todas as alteracoes relevantes do projeto sao documentadas aqui.
 O versionamento segue SemVer.
+
+## [1.2.0] - 2026-07-20
+
+### Adicionado
+- **Compromissos**: CRUD completo de audiencias, reunioes, prazos judiciais, sessoes e
+  diligencias. Vinculacao opcional a caso. Endpoint `GET /api/compromissos/proximos?dias=N`.
+- **Kanban visual**: 4 colunas (A fazer, Em andamento, Em revisao, Concluido) com drag-and-drop
+  HTML5 nativo. Cada caso vira um cartao automaticamente (sincronizado via coluna `kanban_coluna`
+  em `casos`). Endpoint `PUT /api/kanban/:id/mover`.
+- **Integracoes com tribunais**: cadastro de credenciais (TJSP, TJRJ, TJMG, TRF1/2/3, STJ,
+  CNJ DataJud, OAB) com criptografia AES-256-GCM. Endpoint de consulta simulada
+  `POST /api/integracoes/:id/consultar` retorna payload realista (numero, partes, movimentacoes).
+- **Monitoramento de OAB**: cadastro de multiplas OABs (numero + UF) com verificacao em lote
+  via `POST /api/integracoes/oab/verificar`.
+- **Calculadora visual de prazo**: dentro do modal de Prazo (e na sidebar via Compromissos),
+  calcula em tempo real data final em dias uteis ou corridos, mostrando dias corridos vs uteis
+  e feriados nacionais.
+- **3 novas views na sidebar**: Compromissos, Kanban, Integracoes.
+- **3 novos modais**: CompromissoForm, IntegracaoForm, OabForm.
+- **schema-v120.sql**: 4 novas tabelas (compromissos, kanban_cartoes, integracoes_tribunal,
+  oab_monitoramento) carregadas pelo `init.js` alem do schema principal.
+- **migrations-v120.js**: 6 migracoes aditivas tolerantes a execucao repetida (incluindo
+  colunas `kanban_coluna`/`kanban_posicao` em `casos` e `origem` em `prazos`/`tarefas`).
+
+### Mudancas tecnicas
+- 3 novos models: `compromisso.js`, `kanban.js`, `integracao.js` (este ultimo com AES-256-GCM).
+- 3 novos controllers e 3 novas rotas REST.
+- `api.js` (frontend) estendido com `basckAPI.compromissos`, `basckAPI.kanban`,
+  `basckAPI.integracoes` (+ sub-area `oab`).
+- CSS: novos estilos para `.kanban-board`, `.kanban-coluna`, `.compromisso-card`,
+  `.calc-prazo`, `.tabela`, `.grid-cards`, `.chip`.
+
+[1.2.0]: https://github.com/zBasck/basck-law/releases/tag/v1.2.0
 
 ## [1.1.2] - 2026-07-20
 

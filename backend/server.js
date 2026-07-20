@@ -19,6 +19,9 @@ const tarefasRoutes = require('./routes/tarefas');
 const documentosRoutes = require('./routes/documentos');
 const financeiroRoutes = require('./routes/financeiro');
 const buscaRoutes = require('./routes/busca');
+const compromissosRoutes = require('./routes/compromissos');
+const kanbanRoutes = require('./routes/kanban');
+const integracoesRoutes = require('./routes/integracoes');
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
@@ -54,6 +57,9 @@ app.use('/api/tarefas', tarefasRoutes);
 app.use('/api/documentos', documentosRoutes);
 app.use('/api/financeiro', financeiroRoutes);
 app.use('/api/busca', buscaRoutes);
+app.use('/api/compromissos', compromissosRoutes);
+app.use('/api/kanban', kanbanRoutes);
+app.use('/api/integracoes', integracoesRoutes);
 
 // Frontend estatico (DEPOIS das rotas de API)
 const frontendDir = path.join(__dirname, '..', 'frontend');

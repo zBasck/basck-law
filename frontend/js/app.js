@@ -61,6 +61,9 @@ function App() {
     { id: 'clientes', label: 'Clientes', icon: '☉' },
     { id: 'documentos', label: 'Documentos', icon: '⊟' },
     { id: 'financeiro', label: 'Financeiro', icon: '⌬' },
+    { id: 'compromissos', label: 'Compromissos', icon: '⚖' },
+    { id: 'kanban', label: 'Kanban', icon: '▦' },
+    { id: 'integracoes', label: 'Integrações', icon: '⌬' },
     { id: 'configuracoes', label: 'Configurações', icon: '⚙' }
   ];
 
@@ -72,6 +75,9 @@ function App() {
     clientes: { t: 'Clientes', s: 'Sua carteira de clientes' },
     documentos: { t: 'Documentos', s: 'Arquivos e uploads' },
     financeiro: { t: 'Financeiro', s: 'Honorários, cobranças e relatórios' },
+    compromissos: { t: 'Compromissos', s: 'Audiências, prazos e reuniões' },
+    kanban: { t: 'Kanban', s: 'Gestão visual de casos em colunas' },
+    integracoes: { t: 'Integrações', s: 'Tribunais e monitoramento de OAB' },
     configuracoes: { t: 'Configurações', s: 'Perfil e conta' }
   };
 
@@ -85,6 +91,9 @@ function App() {
       case 'clientes': return <BasckUI.ClientesView {...props} />;
       case 'documentos': return <BasckUI.DocumentosView {...props} />;
       case 'financeiro': return <BasckUI.FinanceiroView {...props} />;
+      case 'compromissos': return <BasckUI.CompromissosView {...props} />;
+      case 'kanban': return <BasckUI.KanbanView {...props} />;
+      case 'integracoes': return <BasckUI.IntegracoesView {...props} />;
       case 'configuracoes': return <BasckUI.ConfiguracoesView usuario={usuario} onAtualizar={setUsuario} {...props} />;
       default: return null;
     }
