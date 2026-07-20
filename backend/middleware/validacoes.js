@@ -1,4 +1,5 @@
 // backend/middleware/validacoes.js
+const { HttpError } = require('./erros');
 
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -22,6 +23,10 @@ function isDateTime(v) {
 
 function isNumber(v) {
   return typeof v === 'number' && Number.isFinite(v);
+}
+
+function isPositiveInt(v) {
+  return typeof v === 'number' && Number.isInteger(v) && v > 0;
 }
 
 function isOneOf(v, list) {
@@ -50,14 +55,13 @@ function validateEnum(value, list, field) {
   }
 }
 
-const { HttpError } = require('./erros');
-
 module.exports = {
   isNonEmptyString,
   isEmail,
   isDate,
   isDateTime,
   isNumber,
+  isPositiveInt,
   isOneOf,
   validateRequired,
   validateEmail,

@@ -17,6 +17,7 @@ const OUT_FILE = path.join(DIST_DIR, 'bundle.js');
 // views, busca, e por ultimo o app principal que orquestra tudo.
 const FILES = [
   'api.js',
+  'datepicker.js',
   'auth.js',
   'modals.js',
   'ui.js',

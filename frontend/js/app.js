@@ -57,7 +57,10 @@ function App() {
     { id: 'dashboard', label: 'Dashboard', icon: '⌂' },
     { id: 'casos', label: 'Casos', icon: '§' },
     { id: 'prazos', label: 'Prazos', icon: '◷' },
+    { id: 'compromissos', label: 'Compromissos', icon: '⚖' },
+    { id: 'kanban', label: 'Kanban', icon: '▦' },
     { id: 'tarefas', label: 'Tarefas', icon: '✓' },
+    { id: 'integracoes', label: 'Integrações', icon: '⌬' },
     { id: 'clientes', label: 'Clientes', icon: '☉' },
     { id: 'documentos', label: 'Documentos', icon: '⊟' },
     { id: 'financeiro', label: 'Financeiro', icon: '⌬' },
@@ -68,7 +71,10 @@ function App() {
     dashboard: { t: 'Dashboard', s: 'Visão geral do seu escritório' },
     casos: { t: 'Casos', s: 'Processos e pastas digitais' },
     prazos: { t: 'Prazos', s: 'Compromissos e contagens processuais' },
+    compromissos: { t: 'Compromissos', s: 'Audiências, reuniões e prazos fatais' },
+    kanban: { t: 'Kanban', s: 'Quadro de tarefas e processos' },
     tarefas: { t: 'Tarefas', s: 'Atividades do dia a dia' },
+    integracoes: { t: 'Integrações', s: 'Tribunais (DataJud) e monitoramento de OAB' },
     clientes: { t: 'Clientes', s: 'Sua carteira de clientes' },
     documentos: { t: 'Documentos', s: 'Arquivos e uploads' },
     financeiro: { t: 'Financeiro', s: 'Honorários, cobranças e relatórios' },
@@ -81,7 +87,10 @@ function App() {
       case 'dashboard': return <BasckUI.DashboardView irPara={setView} {...props} />;
       case 'casos': return <BasckUI.CasosView {...props} />;
       case 'prazos': return <BasckUI.PrazosView {...props} />;
+      case 'compromissos': return <BasckUI.CompromissosView {...props} />;
+      case 'kanban': return <BasckUI.KanbanView {...props} />;
       case 'tarefas': return <BasckUI.TarefasView {...props} />;
+      case 'integracoes': return <BasckUI.IntegracoesView {...props} />;
       case 'clientes': return <BasckUI.ClientesView {...props} />;
       case 'documentos': return <BasckUI.DocumentosView {...props} />;
       case 'financeiro': return <BasckUI.FinanceiroView {...props} />;

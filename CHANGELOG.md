@@ -3,6 +3,33 @@
 Todas as alteracoes relevantes do projeto sao documentadas aqui.
 O versionamento segue SemVer.
 
+## [1.2.6] - 2026-07-20
+
+### Corrigido
+- **`isPositiveInt is not a function`** no `controllers/compromissos.js`: funcao nao estava
+  exportada em `middleware/validacoes.js`. Adicionada. Tambem movido o `require('./erros')`
+  para o topo do arquivo (estava no final).
+- **`Coluna invalida`** ao mover para "Em revisao" no Kanban: o model usava `revisao` mas
+  o frontend enviava `em_revisao`. Padronizado para `em_revisao` no `models/kanban.js`.
+- **`numero_oab obrigatorio`** no monitoramento de OAB: o form enviava `numero` mas o
+  controller esperava `numero_oab`. Renomeado o campo no `OabForm`.
+- **Sem select de tribunais** em Integrações: o backend retornava `{id, nome}` e o form
+  tentava ler `t.sigla`. Corrigido para `t.id`. Lista de tribunais ampliada de 9 para 27
+  (inclui STF, STJ, TST, 6 TRFs, 10 TJs, 4 TRTs e OAB).
+- **Compromissos nao salvavam**: enums de `tipo` estavam dessincronizados (backend aceitava
+  `prazo_judicial`/`sessao`, frontend enviava `prazo_fatal`). Sincronizado.
+- **Kanban nao espelhava tarefas**: adicionado `inicializarTarefas` no `KanbanModel`,
+  hooks em `TarefaModel.criar/atualizar/concluir/remover` para criar/mover/remover o
+  cartao kanban espelhado, e migration aditiva para `kanban_coluna`/`kanban_posicao` em
+  `tarefas`. Agora tarefas criadas aparecem no Kanban e vice-versa.
+
+## [1.2.5] - 2026-07-20
+## [1.2.5] - 2026-07-20
+
+### Corrigido
+- **React error #130 nas abas Compromissos/Kanban/Integrações**: o  definia as 3 views mas a exportação  só listava as 8 views antigas. Adicionadas  no export.
+- **ReferenceError: global is not defined** (ressurgiu na v1.2.4): 10 referências a  substituídas por  em . O navegador não tem  (só Node.js tem), daí o  quebrava antes de renderizar.
+
 ## [1.1.2] - 2026-07-20
 
 ### Corrigido
