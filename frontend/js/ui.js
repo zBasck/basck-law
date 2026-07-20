@@ -2,7 +2,7 @@
 // Views do Basck Law (Dashboard, Casos, Prazos, Tarefas, Financeiro, Clientes, Documentos, Config)
 (function (global) {
   const { useState, useEffect, useMemo } = React;
-  const M = global.BasckModals;
+  const M = window.BasckModals;
 
   function fmtData(s) {
     if (!s) return '—';
@@ -708,5 +708,5 @@
     );
   }
 
-  global.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView };
+  window.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView };
 })(window);

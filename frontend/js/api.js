@@ -47,7 +47,7 @@
     if (!res.ok) {
       if (res.status === 401) {
         clearSession();
-        if (global.location && global.location.pathname !== '/') global.location.href = '/';
+        if (window.location && window.location.pathname !== '/') window.location.href = '/';
       }
       const erro = new Error((data && data.erro) || `Erro ${res.status}`);
       erro.status = res.status;
@@ -137,5 +137,5 @@
     }
   };
 
-  global.BasckApi = api;
+  window.BasckApi = api;
 })(window);

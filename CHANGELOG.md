@@ -3,6 +3,10 @@
 Todas as alteracoes relevantes do projeto sao documentadas aqui.
 O versionamento segue SemVer.
 
+## [1.2.3] - 2026-07-20
+
+### Corrigido
+- **ReferenceError: global is not defined** — os 9 arquivos JSX usavam `global.BasckApi`, `global.BasckUI` etc. (variavel Node.js). No navegador isso e ReferenceError logo no primeiro script. Substituido por `window.` (11 referencias nos 5 arquivos do frontend).
 ## [1.1.2] - 2026-07-20
 
 ### Corrigido

@@ -391,5 +391,5 @@
     );
   }
 
-  global.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm };
+  window.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm };
 })(window);
