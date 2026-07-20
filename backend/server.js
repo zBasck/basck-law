@@ -24,7 +24,7 @@ const app = express();
 const PORT = parseInt(process.env.PORT || '3000', 10);
 const CORS_ORIGIN = process.env.CORS_ORIGIN || '*';
 
-// Constroi o bundle JSX unico para o Babel no navegador
+// Constroi o bundle JS (JSX pre-compilado para JS puro via esbuild)
 try {
   buildBundle();
 } catch (err) {
@@ -55,12 +55,15 @@ app.use('/api/documentos', documentosRoutes);
 app.use('/api/financeiro', financeiroRoutes);
 app.use('/api/busca', buscaRoutes);
 
-// Frontend estatico (DEPOIS das rotas de API para nao conflitar)
+// Frontend estatico (DEPOIS das rotas de API)
 const frontendDir = path.join(__dirname, '..', 'frontend');
-app.use(express.static(frontendDir));
+app.use(express.static(frontendDir, { index: 'index.html', extensions: ['html'] }));
 
-// SPA fallback: so atende arquivos que nao comecam com /api/
-app.get(/^\/(?!api\/).*/, (req, res) => {
+// SPA fallback: rotas que NAO comecam com /api/ e NAO tem extensao
+// (exclui .js, .css, .png, .jsx para que o express.static acima sirva esses).
+// Garante que /dist/bundle.js (e qualquer arquivo com extensao) NAO seja
+// capturado por este fallback.
+app.get(/^\/(?!api\/)[^.]*$/, (req, res) => {
   res.sendFile(path.join(frontendDir, 'index.html'), (err) => {
     if (err) res.status(404).json({ erro: 'Pagina nao encontrada' });
   });
