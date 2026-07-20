@@ -48,7 +48,7 @@ async function remover(req, res) {
 }
 
 async function consultar(req, res) {
-  const resultado = IntegracaoModel.consultar(req.usuario.id, req.params.id);
+  const resultado = await IntegracaoModel.consultar(req.usuario.id, req.params.id);
   if (resultado && resultado.erro) throw new HttpError(400, resultado.erro);
   res.json({ resultado });
 }

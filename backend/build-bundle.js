@@ -16,6 +16,7 @@ const OUT_FILE = path.join(DIST_DIR, 'bundle.js');
 // Ordem importa: api e auth (sem dependencias) primeiro, depois modais,
 // views, busca, e por ultimo o app principal que orquestra tudo.
 const FILES = [
+  'datepicker.js',  // DateInput widget (carrega cedo pq e' usado em modals)
   'api.js',
   'auth.js',
   'modals.js',
@@ -53,7 +54,8 @@ function build() {
     if (!fs.existsSync(p)) {
       throw new Error('Arquivo fonte ausente: ' + p);
     }
-    return '// ===== ' + name + ' =====\n' + fs.readFileSync(p, 'utf8') + '\n';
+    return '// ===== ' + name + ' =====\n' +
+      '(function(){\n' + fs.readFileSync(p, 'utf8') + '\n})();\n';
   });
 
   fs.writeFileSync(STAGE_FILE, header + blocks.join('\n'), 'utf8');

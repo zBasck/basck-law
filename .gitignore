@@ -1,10 +1,10 @@
 node_modules/
-*.db
-*.db-journal
+frontend/dist/_stage.jsx
+backend/db/*.db
+backend/db/*.db-journal
 backend/uploads/*
 !backend/uploads/.gitkeep
-frontend/dist/bundle.js
-frontend/dist/bundle.jsx
-.env
+*.log
 .DS_Store
-Thumbs.db
+.vscode/
+.idea/

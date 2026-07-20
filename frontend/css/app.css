@@ -611,3 +611,26 @@ input, select, textarea { font-family: inherit; color: inherit; }
 
 /* Grid de cards */
 .grid-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; margin-top: 12px; }
+
+/* === DateInput widget === */
+.date-input { position: relative; display: inline-flex; align-items: center; gap: 4px; width: 100%; max-width: 240px; }
+.date-input-typed { flex: 1; min-width: 0; padding: 8px 10px; background: #1a1a24; border: 1px solid #2a2a36; border-radius: 6px; color: #e6e6ec; font-size: 14px; }
+.date-input-typed:focus { outline: none; border-color: #c9a55a; }
+.date-input-btn { padding: 6px 8px; background: #2a2a36; border: 1px solid #3a3a46; border-radius: 6px; cursor: pointer; color: #c9a55a; font-size: 14px; }
+.date-input-btn:hover { background: #3a3a46; }
+.date-input-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.date-picker-pop { position: absolute; top: calc(100% + 4px); left: 0; z-index: 1000; background: #15151c; border: 1px solid #c9a55a; border-radius: 8px; padding: 10px; box-shadow: 0 4px 16px rgba(0,0,0,0.4); min-width: 260px; }
+.date-picker-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.date-picker-nav button { background: transparent; border: 1px solid #2a2a36; color: #c9a55a; cursor: pointer; padding: 4px 10px; border-radius: 4px; font-size: 14px; }
+.date-picker-nav button:hover { background: #2a2a36; }
+.date-picker-label { font-weight: 600; color: #c9a55a; font-size: 14px; }
+.date-picker-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.date-picker-dow { text-align: center; font-size: 11px; color: #888; padding: 4px 0; font-weight: 600; }
+.date-picker-day { aspect-ratio: 1; border: none; background: transparent; color: #e6e6ec; cursor: pointer; border-radius: 4px; font-size: 13px; padding: 0; }
+.date-picker-day:hover { background: #2a2a36; }
+.date-picker-day.empty { visibility: hidden; }
+.date-picker-day.sel { background: #c9a55a; color: #0a0a0f; font-weight: 700; }
+.date-picker-day.today { border: 1px solid #c9a55a; }
+.date-picker-foot { display: flex; justify-content: space-between; margin-top: 8px; padding-top: 8px; border-top: 1px solid #2a2a36; }
+.date-picker-foot button { background: transparent; border: 1px solid #2a2a36; color: #c9a55a; cursor: pointer; padding: 4px 10px; border-radius: 4px; font-size: 12px; }
+.date-picker-foot button:hover { background: #2a2a36; }

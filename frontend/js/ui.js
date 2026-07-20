@@ -780,6 +780,7 @@
     const [cartoes, setCartoes] = useState([]);
     const [colunas, setColunas] = useState(['a_fazer', 'em_andamento', 'revisao', 'concluido']);
     const [dragId, setDragId] = useState(null);
+    const [novaTarefa, setNovaTarefa] = useState(false);
     function carregar() {
       BasckApi.kanban.listar().then((r) => {
         setCartoes(r.itens || []);
@@ -796,11 +797,19 @@
       catch (e) { alert(e.message); setCartoes(antes); }
     }
     function cartoesDaColuna(col) { return cartoes.filter((c) => c.coluna === col); }
+    async function excluir(id) {
+      if (!confirm('Excluir este cartao?')) return;
+      try { await BasckApi.kanban.excluir(id); carregar(); }
+      catch (e) { alert(e.message); }
+    }
     return (
       <div className="view kanban-view">
         <div className="view-head">
           <h1 className="serif">Kanban</h1>
-          <span className="muted tiny">{cartoes.length} cartoes</span>
+          <div className="view-head-actions">
+            <span className="muted tiny">{cartoes.length} cartoes</span>
+            <button className="btn btn-primary btn-sm" onClick={() => setNovaTarefa(true)}>+ Nova tarefa</button>
+          </div>
         </div>
         <div className="kanban-board">
           {colunas.map((col) => {
@@ -820,6 +829,7 @@
                     <div key={c.id} className="kanban-cartao" draggable
                       onDragStart={() => setDragId(c.id)}
                       onDragEnd={() => setDragId(null)}>
+                      <button className="kanban-cartao-x" title="Excluir" onClick={() => excluir(c.id)}>×</button>
                       <div className="kanban-cartao-titulo">{c.titulo || '—'}</div>
                       {c.caso && (
                         <div className="kanban-cartao-meta">
@@ -835,6 +845,11 @@
             );
           })}
         </div>
+        {novaTarefa && (
+          <BasckModals.KanbanForm
+            onClose={(atualizou) => { setNovaTarefa(false); if (atualizou) carregar(); }}
+          />
+        )}
       </div>
     );
   }

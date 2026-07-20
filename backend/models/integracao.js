@@ -1,6 +1,7 @@
 // backend/models/integracao.js
 const { getDb } = require('../db/init');
 const crypto = require('node:crypto');
+const https = require('node:https');
 
 function rowsFrom(stmt, ...args) { return stmt.all(...args).map((r) => Object.fromEntries(Object.entries(r))); }
 function rowFrom(stmt, ...args) { const r = stmt.get(...args); return r ? Object.fromEntries(Object.entries(r)) : null; }
@@ -85,7 +86,50 @@ class IntegracaoModel {
     return r.changes > 0;
   }
 
-  static consultar(usuario_id, integracao_id) {
+  static descriptografar(segredo_criptografado) {
+    if (!segredo_criptografado) return null;
+    try {
+      const buf = Buffer.from(segredo_criptografado, 'base64');
+      const iv = buf.subarray(0, 12);
+      const tag = buf.subarray(12, 28);
+      const enc = buf.subarray(28);
+      const decipher = crypto.createDecipheriv(ALGO, getKey(), iv);
+      decipher.setAuthTag(tag);
+      return Buffer.concat([decipher.update(enc), decipher.final()]).toString('utf8');
+    } catch (e) { return null; }
+  }
+
+  static async chamarDataJud(tribunal, numeroProcesso, apiKey) {
+    const url = `https://api-publica.datajud.cnj.jus.br/api_publica_${tribunal}/_search`;
+    return new Promise((resolve, reject) => {
+      const req = https.request(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'APIKey ' + apiKey
+        },
+        timeout: 15000
+      }, (res) => {
+        let body = '';
+        res.on('data', (c) => body += c);
+        res.on('end', () => {
+          if (res.statusCode !== 200) {
+            return reject(new Error(`DataJud retornou ${res.statusCode}: ${body.slice(0, 200)}`));
+          }
+          try { resolve(JSON.parse(body)); }
+          catch (e) { reject(new Error('Resposta invalida do DataJud')); }
+        });
+      });
+      req.on('error', (e) => reject(new Error('Falha de rede com DataJud: ' + e.message)));
+      req.on('timeout', () => { req.destroy(); reject(new Error('Timeout (15s) ao consultar DataJud')); });
+      req.write(JSON.stringify({
+        query: { match: { numeroProcesso: numeroProcesso.replace(/\D/g, '') } }
+      }));
+      req.end();
+    });
+  }
+
+  static async consultar(usuario_id, integracao_id) {
     const integ = rowFrom(getDb().prepare('SELECT * FROM integracoes_tribunal WHERE id = ? AND usuario_id = ?'),
       integracao_id, usuario_id);
     if (!integ) return { erro: 'Integracao nao encontrada' };
@@ -94,30 +138,48 @@ class IntegracaoModel {
     const agora = new Date().toISOString();
     let resultado;
     if (integ.tribunal === 'oab') {
+      // OAB nao tem API publica gratuita — mantemos simulacao
       resultado = {
-        tipo: 'oab', sucesso: true,
+        tipo: 'oab', sucesso: true, simulado: true,
         numero_oab: integ.identificador,
         situacao: 'regular',
         ultima_inscricao: '2010-08-15',
         especialidades: ['Civel', 'Trabalhista'],
-        emitido_em: agora
+        emitido_em: agora,
+        aviso: 'Consulta OAB simulada. Nao existe API publica gratuita para verificacao de inscricao na OAB.'
       };
     } else {
-      resultado = {
-        tipo: 'processo', sucesso: true,
-        numero: integ.identificador,
-        tribunal: integ.tribunal,
-        ultima_movimentacao: {
-          data: agora.substring(0, 10),
-          descricao: 'Conclusos para despacho',
-          orgao: 'Gabinete do Juiz'
-        },
-        partes: [
-          { polo: 'ativo',  nome: 'Autor Exemplo' },
-          { polo: 'passivo', nome: 'Reu Exemplo' }
-        ],
-        emitido_em: agora
-      };
+      // DataJud CNJ — API publica real
+      const apiKey = this.descriptografar(integ.segredo_criptografado);
+      if (!apiKey) {
+        resultado = { tipo: 'processo', sucesso: false, erro: 'API Key nao configurada ou invalida. Edite a integracao.' };
+      } else {
+        try {
+          const r = await this.chamarDataJud(integ.tribunal, integ.identificador, apiKey);
+          const hits = (r.hits && r.hits.hits) || [];
+          const proc = hits[0] && hits[0]._source;
+          if (!proc) {
+            resultado = { tipo: 'processo', sucesso: true, encontrado: false, numero: integ.identificador, tribunal: integ.tribunal, emitido_em: agora };
+          } else {
+            const movs = (proc.movimentos || []).slice(0, 5);
+            resultado = {
+              tipo: 'processo', sucesso: true, encontrado: true,
+              numero: proc.numeroProcesso || integ.identificador,
+              tribunal: integ.tribunal,
+              classe: proc.classe ? proc.classe.nome : null,
+              orgao: proc.orgaoJulgador ? proc.orgaoJulgador.nome : null,
+              data_ajuizamento: proc.dataAjuizamento,
+              ultima_movimentacao: movs[0] ? { data: movs[0].dataHora, descricao: movs[0].movimentoNacional || movs[0].descricao } : null,
+              movimentos: movs.map((m) => ({ data: m.dataHora, descricao: m.movimentoNacional || m.descricao })),
+              assuntos: (proc.assuntos || []).map((a) => a.nome).filter(Boolean),
+              emitido_em: agora,
+              fonte: 'DataJud CNJ (api-publica.datajud.cnj.jus.br)'
+            };
+          }
+        } catch (e) {
+          resultado = { tipo: 'processo', sucesso: false, erro: e.message, numero: integ.identificador, tribunal: integ.tribunal, emitido_em: agora };
+        }
+      }
     }
 
     getDb().prepare(`

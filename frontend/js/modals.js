@@ -122,7 +122,7 @@
           </div>
           <div className="form-row">
             <Field label="Valor da causa (R$)"><input type="number" step="0.01" min="0" value={dados.valor_causa || ''} onChange={(e) => set('valor_causa', e.target.value)} /></Field>
-            <Field label="Data de início"><input type="date" value={dados.data_inicio || ''} onChange={(e) => set('data_inicio', e.target.value)} /></Field>
+            <Field label="Data de início"><DateInput value={dados.data_inicio || ''} onChange={(e) => set('data_inicio', e.target.value)} /></Field>
           </div>
           <Field label="Status">
             <select value={dados.status} onChange={(e) => set('status', e.target.value)}>
@@ -181,8 +181,8 @@
           <Field label="Título *"><input required value={dados.titulo} onChange={(e) => set('titulo', e.target.value)} maxLength={200} /></Field>
           <Field label="Descrição"><textarea value={dados.descricao || ''} onChange={(e) => set('descricao', e.target.value)} /></Field>
           <div className="form-row">
-            <Field label="Data de início *"><input type="date" required value={dados.data_inicio} onChange={(e) => set('data_inicio', e.target.value)} /></Field>
-            <Field label="Data de vencimento *"><input type="date" required value={dados.data_vencimento} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
+            <Field label="Data de início *"><DateInput value={dados.data_inicio} onChange={(e) => set('data_inicio', e.target.value)} /></Field>
+            <Field label="Data de vencimento *"><DateInput value={dados.data_vencimento} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
           </div>
           <div className="form-row">
             <Field label="Contagem">
@@ -231,7 +231,7 @@
           <Field label="Título *"><input required value={dados.titulo} onChange={(e) => set('titulo', e.target.value)} maxLength={200} /></Field>
           <Field label="Descrição"><textarea value={dados.descricao || ''} onChange={(e) => set('descricao', e.target.value)} /></Field>
           <div className="form-row">
-            <Field label="Vencimento"><input type="date" value={dados.data_vencimento || ''} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
+            <Field label="Vencimento"><DateInput value={dados.data_vencimento || ''} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
             <Field label="Prioridade">
               <select value={dados.prioridade} onChange={(e) => set('prioridade', e.target.value)}>
                 <option value="baixa">Baixa</option>
@@ -309,8 +309,8 @@
             </Field>
           </div>
           <div className="form-row">
-            <Field label="Vencimento"><input type="date" value={dados.data_vencimento || ''} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
-            <Field label="Data do pagamento"><input type="date" value={dados.data_pagamento || ''} onChange={(e) => set('data_pagamento', e.target.value)} /></Field>
+            <Field label="Vencimento"><DateInput value={dados.data_vencimento || ''} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
+            <Field label="Data do pagamento"><DateInput value={dados.data_pagamento || ''} onChange={(e) => set('data_pagamento', e.target.value)} /></Field>
           </div>
           <div className="form-row">
             <Field label="Forma">
@@ -422,7 +422,7 @@
       <div className="calc-prazo">
         <div className="calc-row">
           <Field label="Data inicial">
-            <input type="date" value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
+            <DateInput value={dataInicio} onChange={(e) => setDataInicio(e.target.value)} />
           </Field>
           <Field label="Dias">
             <input type="number" min="1" max="365" value={dias} onChange={(e) => setDias(e.target.value)} />
@@ -604,6 +604,68 @@
     );
   }
 
+
+  function KanbanForm(props) {
+    const { onClose } = props;
+    const [titulo, setTitulo] = useState('');
+    const [descricao, setDescricao] = useState('');
+    const [coluna, setColuna] = useState('a_fazer');
+    const [casoId, setCasoId] = useState('');
+    const [casos, setCasos] = useState([]);
+    const [erro, setErro] = useState('');
+    const [salvando, setSalvando] = useState(false);
+    useEffect(() => {
+      BasckApi.casos.listar().then((r) => setCasos(r.itens || [])).catch(() => {});
+    }, []);
+    async function salvar(e) {
+      e.preventDefault();
+      setErro('');
+      if (!titulo.trim()) { setErro('Título é obrigatório'); return; }
+      setSalvando(true);
+      try {
+        await BasckApi.kanban.criar({
+          titulo: titulo.trim(),
+          descricao: descricao.trim() || null,
+          coluna,
+          caso_id: casoId ? Number(casoId) : null,
+        });
+        onClose(true);
+      } catch (e2) { setErro(e2.message); }
+      finally { setSalvando(false); }
+    }
+    return (
+      Modal({ title: 'Nova tarefa no Kanban', onClose: () => onClose(false), children:
+        React.createElement('form', { onSubmit: salvar, className: 'form-grid' },
+          erro && React.createElement('div', { className: 'form-error' }, erro),
+          React.createElement(Field, { label: 'Título *' },
+            React.createElement('input', { value: titulo, onChange: (e) => setTitulo(e.target.value), required: true, autoFocus: true })
+          ),
+          React.createElement(Field, { label: 'Descrição' },
+            React.createElement('textarea', { value: descricao, onChange: (e) => setDescricao(e.target.value), rows: 3 })
+          ),
+          React.createElement(Field, { label: 'Coluna inicial' },
+            React.createElement('select', { value: coluna, onChange: (e) => setColuna(e.target.value) },
+              React.createElement('option', { value: 'a_fazer' }, 'A fazer'),
+              React.createElement('option', { value: 'em_andamento' }, 'Em andamento'),
+              React.createElement('option', { value: 'revisao' }, 'Em revisão'),
+              React.createElement('option', { value: 'concluido' }, 'Concluído')
+            )
+          ),
+          React.createElement(Field, { label: 'Vincular a caso (opcional)' },
+            React.createElement('select', { value: casoId, onChange: (e) => setCasoId(e.target.value) },
+              React.createElement('option', { value: '' }, '— Nenhum —'),
+              casos.map((c) => React.createElement('option', { key: c.id, value: c.id }, c.titulo || c.numero_processo || ('Caso #' + c.id)))
+            )
+          ),
+          React.createElement('div', { className: 'form-actions' },
+            React.createElement('button', { type: 'button', className: 'btn', onClick: () => onClose(false) }, 'Cancelar'),
+            React.createElement('button', { type: 'submit', className: 'btn btn-primary', disabled: salvando }, salvando ? 'Salvando...' : 'Criar')
+          )
+        )
+      })
+    );
+  }
+
   global.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm,
-    CompromissoForm, IntegracaoForm, OabForm, CalculadoraPrazo };
+    CompromissoForm, IntegracaoForm, OabForm, CalculadoraPrazo, KanbanForm };
 })(window);
