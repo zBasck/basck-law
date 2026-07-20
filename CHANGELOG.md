@@ -3,6 +3,12 @@
 Todas as alteracoes relevantes do projeto sao documentadas aqui.
 O versionamento segue SemVer.
 
+## [1.2.5] - 2026-07-20
+
+### Corrigido
+- **React error #130 nas abas Compromissos/Kanban/Integrações**: o  definia as 3 views mas a exportação  só listava as 8 views antigas. Adicionadas  no export.
+- **ReferenceError: global is not defined** (ressurgiu na v1.2.4): 10 referências a  substituídas por  em . O navegador não tem  (só Node.js tem), daí o  quebrava antes de renderizar.
+
 ## [1.1.2] - 2026-07-20
 
 ### Corrigido
