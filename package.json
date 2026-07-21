@@ -1,0 +1,26 @@
+{
+  "name": "basck-law",
+  "version": "1.2.7",
+  "description": "Plataforma SaaS juridica para advogados autonomos e pequenos escritorios - gestao de casos, clientes, prazos, documentos e financeiro",
+  "main": "backend/server.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "node backend/server.js",
+    "dev": "node --watch backend/server.js",
+    "build": "node backend/build-bundle.js",
+    "smoke": "node test-smoke.js"
+  },
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "esbuild": "^0.21.5",
+    "express": "^4.19.2",
+    "jsonwebtoken": "^9.0.2",
+    "multer": "^1.4.5-lts.2"
+  },
+  "author": "Basck",
+  "license": "MIT"
+}
