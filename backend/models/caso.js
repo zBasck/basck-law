@@ -88,6 +88,23 @@ class CasoModel {
     const suspensos = db.prepare("SELECT COUNT(*) as n FROM casos WHERE usuario_id = ? AND status = 'suspenso'").get(usuario_id).n;
     return { total, em_andamento, concluidos, suspensos };
   }
+  // v1.4.0 — Detalhes agregados do caso (usado pela tela de detalhes)
+  static detalhes(id, usuario_id) {
+    const caso = this.buscarPorId(id, usuario_id);
+    if (!caso) return null;
+    const PrazoModel = require('./prazo');
+    const TarefaModel = require('./tarefa');
+    const CompromissoModel = require('./compromisso');
+    const CasoAndamentoModel = require('./casoAndamento');
+    return {
+      caso,
+      andamentos: CasoAndamentoModel.listar(id, usuario_id),
+      prazos: PrazoModel.listar(usuario_id, { caso_id: id }),
+      tarefas: TarefaModel.listar(usuario_id, { caso_id: id }),
+      compromissos: CompromissoModel.listar(usuario_id, { caso_id: id }),
+      documentos: []
+    };
+  }
 }
-
 module.exports = CasoModel;
+

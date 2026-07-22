@@ -87,9 +87,15 @@
             },
             estatisticas: () => request("/api/casos/estatisticas"),
             buscar: (id) => request(`/api/casos/${id}`),
+            detalhes: (id) => request(`/api/casos/${id}/detalhes`),
             criar: (d) => request("/api/casos", { method: "POST", body: d }),
             atualizar: (id, d) => request(`/api/casos/${id}`, { method: "PUT", body: d }),
-            remover: (id) => request(`/api/casos/${id}`, { method: "DELETE" })
+            remover: (id) => request(`/api/casos/${id}`, { method: "DELETE" }),
+            andamentos: {
+              listar: (casoId) => request(`/api/casos/${casoId}/andamentos`),
+              criar: (casoId, d) => request(`/api/casos/${casoId}/andamentos`, { method: "POST", body: d }),
+              remover: (casoId, andamentoId) => request(`/api/casos/${casoId}/andamentos/${andamentoId}`, { method: "DELETE" })
+            }
           },
           prazos: {
             listar: (params = {}) => {
@@ -387,8 +393,94 @@
         global.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm };
       })(window);
       (function(global) {
+        const { useState: useState2, useEffect: useEffect2 } = React;
+        function CasoDetalhesView({ casoId, onVoltar, toast }) {
+          const [dados, setDados] = useState2(null);
+          const [carregando, setCarregando] = useState2(true);
+          const [aba, setAba] = useState2("andamentos");
+          const [modalAnd, setModalAnd] = useState2(false);
+          const [novoAnd, setNovoAnd] = useState2({ data: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), descricao: "", tipo: "" });
+          function carregar() {
+            setCarregando(true);
+            BasckApi.casos.detalhes(casoId).then((r) => setDados(r)).catch((e) => {
+              toast(e.message, "error");
+              onVoltar();
+            }).finally(() => setCarregando(false));
+          }
+          useEffect2(carregar, [casoId]);
+          async function adicionarAndamento(e) {
+            e.preventDefault();
+            if (!novoAnd.descricao.trim()) return;
+            try {
+              await BasckApi.casos.andamentos.criar(casoId, novoAnd);
+              setModalAnd(false);
+              setNovoAnd({ data: (/* @__PURE__ */ new Date()).toISOString().slice(0, 10), descricao: "", tipo: "" });
+              carregar();
+              toast("Andamento registrado", "success");
+            } catch (err) {
+              toast(err.message, "error");
+            }
+          }
+          async function removerAndamento(id) {
+            if (!confirm("Remover este andamento?")) return;
+            try {
+              await BasckApi.casos.andamentos.remover(casoId, id);
+              carregar();
+              toast("Removido", "success");
+            } catch (err) {
+              toast(err.message, "error");
+            }
+          }
+          async function consultarDatajud() {
+            try {
+              toast("Consultando DataJud...", "info");
+              const c = dados.caso;
+              const int = await BasckApi.integracoes.listar();
+              const integ = (int.integracoes || []).find((x) => x.tribunal && c.tribunal && x.tribunal.toLowerCase() === c.tribunal.toLowerCase());
+              if (!integ) {
+                toast("Sem credencial para " + c.tribunal + " \u2014 cadastre em Integra\xE7\xF5es", "error");
+                return;
+              }
+              const r = await BasckApi.integracoes.consultar(integ.id, { numero: c.numero_processo });
+              const movimentos = r.resultado && r.resultado.hits && r.resultado.hits.hits ? r.resultado.hits.hits.flatMap((h) => h._source && h._source.movimentos || []) : [];
+              if (movimentos.length === 0) {
+                toast("Nenhum movimento novo no DataJud", "info");
+                return;
+              }
+              const andamentos2 = movimentos.map((m) => ({
+                data: (m.dataHora || (/* @__PURE__ */ new Date()).toISOString()).slice(0, 10),
+                descricao: m.nome || m.descricao || "Movimento processual",
+                tipo: m.tipo || null,
+                origem: "datajud",
+                fonte_externa_id: String(m.codigo || m.dataHora || Math.random())
+              }));
+              await BasckApi.casos.andamentos.criar(casoId, { andamentos: andamentos2 });
+              carregar();
+              toast(andamentos2.length + " andamentos importados do DataJud", "success");
+            } catch (err) {
+              toast(err.message, "error");
+            }
+          }
+          if (carregando) return /* @__PURE__ */ React.createElement("div", { className: "loading" }, /* @__PURE__ */ React.createElement("div", { className: "spinner" }), "Carregando caso...");
+          if (!dados) return null;
+          const { caso, andamentos, prazos, tarefas, compromissos, documentos } = dados;
+          const cPrazos = prazos.filter((p) => p.status === "pendente");
+          const cTarefas = tarefas.filter((t) => t.status !== "concluida");
+          const cCompromissos = compromissos.filter((c) => c.status === "agendado");
+          return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "card mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex between center gap-3" }, /* @__PURE__ */ React.createElement("div", { style: { flex: 1 } }, /* @__PURE__ */ React.createElement("button", { className: "btn sm ghost", onClick: onVoltar }, "\u2190 Voltar aos casos"), /* @__PURE__ */ React.createElement("h2", { style: { marginTop: 8 } }, caso.titulo), /* @__PURE__ */ React.createElement("div", { className: "muted tiny" }, caso.cliente_nome && /* @__PURE__ */ React.createElement("span", null, "Cliente: ", /* @__PURE__ */ React.createElement("strong", null, caso.cliente_nome), " \xB7 "), caso.numero_processo && /* @__PURE__ */ React.createElement("span", null, "N\xBA proc: ", /* @__PURE__ */ React.createElement("code", null, caso.numero_processo), " \xB7 "), caso.tribunal && /* @__PURE__ */ React.createElement("span", null, "Tribunal: ", caso.tribunal, " \xB7 "), caso.area && /* @__PURE__ */ React.createElement("span", null, "\xC1rea: ", caso.area, " \xB7 "), caso.status && /* @__PURE__ */ React.createElement("span", null, "Status: ", caso.status))), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2" }, caso.numero_processo && /* @__PURE__ */ React.createElement("button", { className: "btn", onClick: consultarDatajud, title: "Importar andamentos do DataJud" }, "\u232C Atualizar via DataJud")))), /* @__PURE__ */ React.createElement("div", { className: "card mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex gap-2", style: { borderBottom: "1px solid var(--line-2)", paddingBottom: 0 } }, [
+            { v: "andamentos", l: "Andamentos", n: andamentos.length },
+            { v: "prazos", l: "Prazos", n: prazos.length },
+            { v: "tarefas", l: "Tarefas", n: tarefas.length },
+            { v: "compromissos", l: "Compromissos", n: compromissos.length },
+            { v: "documentos", l: "Documentos", n: documentos.length },
+            { v: "info", l: "Dados", n: null }
+          ].map((t) => /* @__PURE__ */ React.createElement("button", { key: t.v, className: "btn sm" + (aba === t.v ? " primary" : ""), onClick: () => setAba(t.v), style: { borderRadius: "6px 6px 0 0" } }, t.l, t.n != null ? ` (${t.n})` : "")))), aba === "andamentos" && /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { className: "flex between center mb-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("h3", null, "Timeline de andamentos"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, andamentos.length, " andamento(s) registrado(s)")), /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setModalAnd(true) }, "+ Novo andamento")), andamentos.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "empty-state" }, /* @__PURE__ */ React.createElement("p", { className: "muted" }, 'Nenhum andamento registrado. Use "Atualizar via DataJud" para importar ou adicione manualmente.')) : /* @__PURE__ */ React.createElement("div", { className: "timeline" }, andamentos.map((a) => /* @__PURE__ */ React.createElement("div", { key: a.id, className: "timeline-item" }, /* @__PURE__ */ React.createElement("div", { className: "timeline-dot" }), /* @__PURE__ */ React.createElement("div", { className: "timeline-content" }, /* @__PURE__ */ React.createElement("div", { className: "flex between center" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("span", { className: "timeline-date" }, a.data), a.tipo && /* @__PURE__ */ React.createElement("span", { className: "badge", style: { marginLeft: 8 } }, a.tipo), a.origem && a.origem !== "manual" && /* @__PURE__ */ React.createElement("span", { className: "badge", style: { marginLeft: 4, background: "var(--gold-dim)" } }, a.origem)), /* @__PURE__ */ React.createElement("button", { className: "btn sm danger", onClick: () => removerAndamento(a.id) }, "\xD7")), /* @__PURE__ */ React.createElement("div", { className: "timeline-desc" }, a.descricao)))))), aba === "prazos" && /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Prazos vinculados"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, cPrazos.length, " pendente(s) \xB7 ", prazos.length - cPrazos.length, " conclu\xEDdo(s)"), prazos.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: "muted" }, "Nenhum prazo vinculado a este caso.") : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "T\xEDtulo"), /* @__PURE__ */ React.createElement("th", null, "Tipo"), /* @__PURE__ */ React.createElement("th", null, "Vencimento"), /* @__PURE__ */ React.createElement("th", null, "Status"))), /* @__PURE__ */ React.createElement("tbody", null, prazos.map((p) => /* @__PURE__ */ React.createElement("tr", { key: p.id }, /* @__PURE__ */ React.createElement("td", null, p.titulo), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, p.tipo_dias), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, p.data_vencimento), /* @__PURE__ */ React.createElement("td", null, p.status)))))), aba === "tarefas" && /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Tarefas vinculadas"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, cTarefas.length, " pendente(s) \xB7 ", tarefas.length - cTarefas.length, " conclu\xEDda(s)"), tarefas.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: "muted" }, "Nenhuma tarefa vinculada.") : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "T\xEDtulo"), /* @__PURE__ */ React.createElement("th", null, "Vencimento"), /* @__PURE__ */ React.createElement("th", null, "Prioridade"), /* @__PURE__ */ React.createElement("th", null, "Status"))), /* @__PURE__ */ React.createElement("tbody", null, tarefas.map((t) => /* @__PURE__ */ React.createElement("tr", { key: t.id }, /* @__PURE__ */ React.createElement("td", null, t.titulo), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, t.data_vencimento || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, t.prioridade || "\u2014"), /* @__PURE__ */ React.createElement("td", null, t.status)))))), aba === "compromissos" && /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Compromissos vinculados"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, cCompromissos.length, " agendado(s) \xB7 ", compromissos.length - cCompromissos.length, " realizado(s)/cancelado(s)"), compromissos.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: "muted" }, "Nenhum compromisso vinculado.") : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "T\xEDtulo"), /* @__PURE__ */ React.createElement("th", null, "Data/hora"), /* @__PURE__ */ React.createElement("th", null, "Tipo"), /* @__PURE__ */ React.createElement("th", null, "Status"))), /* @__PURE__ */ React.createElement("tbody", null, compromissos.map((c) => /* @__PURE__ */ React.createElement("tr", { key: c.id }, /* @__PURE__ */ React.createElement("td", null, c.titulo), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, c.data_hora), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, c.tipo || "\u2014"), /* @__PURE__ */ React.createElement("td", null, c.status)))))), aba === "documentos" && /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Documentos"), documentos.length === 0 ? /* @__PURE__ */ React.createElement("p", { className: "muted" }, "Nenhum documento vinculado. Anexe arquivos na \xE1rea de Documentos.") : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Arquivo"), /* @__PURE__ */ React.createElement("th", null, "Tipo"), /* @__PURE__ */ React.createElement("th", null, "Enviado em"))), /* @__PURE__ */ React.createElement("tbody", null, documentos.map((d) => /* @__PURE__ */ React.createElement("tr", { key: d.id }, /* @__PURE__ */ React.createElement("td", null, d.nome || d.titulo), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, d.tipo || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "muted tiny" }, d.criado_em || "\u2014")))))), aba === "info" && /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Dados do caso"), /* @__PURE__ */ React.createElement("div", { className: "grid grid-2 mt-3" }, /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "T\xEDtulo:"), " ", caso.titulo), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "Cliente:"), " ", caso.cliente_nome || "\u2014"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "N\xFAmero do processo:"), " ", caso.numero_processo || "\u2014"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "Tribunal:"), " ", caso.tribunal || "\u2014"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "\xC1rea:"), " ", caso.area || "\u2014"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "Inst\xE2ncia:"), " ", caso.instancia || "\u2014"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "Status:"), " ", caso.status), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "Valor da causa:"), " ", caso.valor_causa ? "R$ " + Number(caso.valor_causa).toLocaleString("pt-BR", { minimumFractionDigits: 2 }) : "\u2014"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "Data de in\xEDcio:"), " ", caso.data_inicio || "\u2014"), /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("strong", null, "Data fim:"), " ", caso.data_fim || "\u2014")), caso.descricao && /* @__PURE__ */ React.createElement("div", { className: "mt-3" }, /* @__PURE__ */ React.createElement("strong", null, "Descri\xE7\xE3o:"), /* @__PURE__ */ React.createElement("p", { className: "muted" }, caso.descricao))), modalAnd && /* @__PURE__ */ React.createElement(BasckModals.Modal, { titulo: "Novo andamento", onClose: () => setModalAnd(false) }, /* @__PURE__ */ React.createElement("form", { onSubmit: adicionarAndamento }, /* @__PURE__ */ React.createElement("div", { className: "form-group" }, /* @__PURE__ */ React.createElement("label", null, "Data"), /* @__PURE__ */ React.createElement("input", { type: "date", value: novoAnd.data, onChange: (e) => setNovoAnd({ ...novoAnd, data: e.target.value }), required: true })), /* @__PURE__ */ React.createElement("div", { className: "form-group" }, /* @__PURE__ */ React.createElement("label", null, "Tipo (opcional)"), /* @__PURE__ */ React.createElement("input", { value: novoAnd.tipo, onChange: (e) => setNovoAnd({ ...novoAnd, tipo: e.target.value }), placeholder: "ex: Despacho, Senten\xE7a, Audi\xEAncia..." })), /* @__PURE__ */ React.createElement("div", { className: "form-group" }, /* @__PURE__ */ React.createElement("label", null, "Descri\xE7\xE3o *"), /* @__PURE__ */ React.createElement("textarea", { value: novoAnd.descricao, onChange: (e) => setNovoAnd({ ...novoAnd, descricao: e.target.value }), required: true, rows: 4, placeholder: "Descreva o andamento processual..." })), /* @__PURE__ */ React.createElement("div", { className: "flex gap-2 mt-3" }, /* @__PURE__ */ React.createElement("button", { type: "submit", className: "btn primary" }, "Salvar"), /* @__PURE__ */ React.createElement("button", { type: "button", className: "btn", onClick: () => setModalAnd(false) }, "Cancelar")))));
+        }
+        global.BasckCasoDetalhes = { CasoDetalhesView };
+      })(window);
+      (function(global) {
         const { useState: useState2, useEffect: useEffect2, useMemo } = React;
-        const M = global.BasckModals;
+        const M = window.BasckModals;
         function fmtData(s) {
           if (!s) return "\u2014";
           const iso = String(s).slice(0, 10);
@@ -481,7 +573,10 @@
           const [busca, setBusca] = useState2("");
           const [statusFiltro, setStatusFiltro] = useState2("");
           const [modal, setModal] = useState2(null);
-          const [detalhe, setDetalhe] = useState2(null);
+          const [casoAbertoId, setCasoAbertoId] = useState2(null);
+          if (casoAbertoId) {
+            return /* @__PURE__ */ React.createElement(BasckCasoDetalhes.CasoDetalhesView, { casoId: casoAbertoId, onVoltar: () => setCasoAbertoId(null), toast });
+          }
           function carregar() {
             setCarregando(true);
             BasckApi.casos.listar({ status: statusFiltro || null, q: busca || null }).then((r) => setItens(r.itens || [])).catch((e) => toast(e.message, "error")).finally(() => setCarregando(false));
@@ -502,7 +597,7 @@
               toast(e.message, "error");
             }
           }
-          return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "card mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex between center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex gap-2", style: { flex: 1 } }, /* @__PURE__ */ React.createElement("input", { placeholder: "Buscar por t\xEDtulo ou n\xFAmero...", value: busca, onChange: (e) => setBusca(e.target.value), style: { flex: 1, padding: "8px 12px", background: "var(--bg-3)", border: "1px solid var(--line-2)", borderRadius: 6, color: "var(--ink)" } }), /* @__PURE__ */ React.createElement("select", { value: statusFiltro, onChange: (e) => setStatusFiltro(e.target.value), style: { padding: "8px 12px", background: "var(--bg-3)", border: "1px solid var(--line-2)", borderRadius: 6, color: "var(--ink)" } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Todos status"), /* @__PURE__ */ React.createElement("option", { value: "em_andamento" }, "Em andamento"), /* @__PURE__ */ React.createElement("option", { value: "concluido" }, "Conclu\xEDdo"), /* @__PURE__ */ React.createElement("option", { value: "suspenso" }, "Suspenso"), /* @__PURE__ */ React.createElement("option", { value: "arquivado" }, "Arquivado"))), /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setModal({ tipo: "novo" }) }, "+ Novo caso"))), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Seus casos"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, itens.length, " caso(s) encontrado(s)"), carregando ? /* @__PURE__ */ React.createElement(Loading, null) : itens.length === 0 ? /* @__PURE__ */ React.createElement(Empty, { texto: "Nenhum caso cadastrado", acao: /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setModal({ tipo: "novo" }) }, "Cadastrar caso") }) : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "T\xEDtulo"), /* @__PURE__ */ React.createElement("th", null, "Cliente"), /* @__PURE__ */ React.createElement("th", null, "\xC1rea"), /* @__PURE__ */ React.createElement("th", null, "N\xBA processo"), /* @__PURE__ */ React.createElement("th", null, "Status"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, itens.map((c) => /* @__PURE__ */ React.createElement("tr", { key: c.id, style: { cursor: "pointer" }, onClick: () => setDetalhe(c) }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 500 } }, c.titulo), /* @__PURE__ */ React.createElement("div", { className: "tiny" }, c.tribunal || "\u2014")), /* @__PURE__ */ React.createElement("td", { className: "muted" }, c.cliente_nome || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "muted" }, c.area || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "tiny muted" }, c.numero_processo || "\u2014"), /* @__PURE__ */ React.createElement("td", null, casoStatusBadge(c.status)), /* @__PURE__ */ React.createElement("td", { className: "actions", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("button", { className: "btn sm", onClick: () => setModal({ tipo: "editar", caso: c }) }, "Editar"), /* @__PURE__ */ React.createElement("button", { className: "btn sm danger", onClick: () => remover(c) }, "Excluir"))))))), modal && /* @__PURE__ */ React.createElement(M.Modal, { titulo: modal.tipo === "editar" ? "Editar caso" : "Novo caso", onClose: () => setModal(null) }, /* @__PURE__ */ React.createElement(M.CasoForm, { inicial: modal.caso, onSalvar: salvar, onCancelar: () => setModal(null) })));
+          return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "card mb-4" }, /* @__PURE__ */ React.createElement("div", { className: "flex between center gap-3" }, /* @__PURE__ */ React.createElement("div", { className: "flex gap-2", style: { flex: 1 } }, /* @__PURE__ */ React.createElement("input", { placeholder: "Buscar por t\xEDtulo ou n\xFAmero...", value: busca, onChange: (e) => setBusca(e.target.value), style: { flex: 1, padding: "8px 12px", background: "var(--bg-3)", border: "1px solid var(--line-2)", borderRadius: 6, color: "var(--ink)" } }), /* @__PURE__ */ React.createElement("select", { value: statusFiltro, onChange: (e) => setStatusFiltro(e.target.value), style: { padding: "8px 12px", background: "var(--bg-3)", border: "1px solid var(--line-2)", borderRadius: 6, color: "var(--ink)" } }, /* @__PURE__ */ React.createElement("option", { value: "" }, "Todos status"), /* @__PURE__ */ React.createElement("option", { value: "em_andamento" }, "Em andamento"), /* @__PURE__ */ React.createElement("option", { value: "concluido" }, "Conclu\xEDdo"), /* @__PURE__ */ React.createElement("option", { value: "suspenso" }, "Suspenso"), /* @__PURE__ */ React.createElement("option", { value: "arquivado" }, "Arquivado"))), /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setModal({ tipo: "novo" }) }, "+ Novo caso"))), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Seus casos"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, itens.length, " caso(s) encontrado(s)"), carregando ? /* @__PURE__ */ React.createElement(Loading, null) : itens.length === 0 ? /* @__PURE__ */ React.createElement(Empty, { texto: "Nenhum caso cadastrado", acao: /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setModal({ tipo: "novo" }) }, "Cadastrar caso") }) : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "T\xEDtulo"), /* @__PURE__ */ React.createElement("th", null, "Cliente"), /* @__PURE__ */ React.createElement("th", null, "\xC1rea"), /* @__PURE__ */ React.createElement("th", null, "N\xBA processo"), /* @__PURE__ */ React.createElement("th", null, "Status"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, itens.map((c) => /* @__PURE__ */ React.createElement("tr", { key: c.id, style: { cursor: "pointer" }, onClick: () => setCasoAbertoId(c.id) }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("div", { style: { fontWeight: 500 } }, c.titulo), /* @__PURE__ */ React.createElement("div", { className: "tiny" }, c.tribunal || "\u2014")), /* @__PURE__ */ React.createElement("td", { className: "muted" }, c.cliente_nome || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "muted" }, c.area || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "tiny muted" }, c.numero_processo || "\u2014"), /* @__PURE__ */ React.createElement("td", null, casoStatusBadge(c.status)), /* @__PURE__ */ React.createElement("td", { className: "actions", onClick: (e) => e.stopPropagation() }, /* @__PURE__ */ React.createElement("button", { className: "btn sm", onClick: () => setModal({ tipo: "editar", caso: c }) }, "Editar"), /* @__PURE__ */ React.createElement("button", { className: "btn sm danger", onClick: () => remover(c) }, "Excluir"))))))), modal && /* @__PURE__ */ React.createElement(M.Modal, { titulo: modal.tipo === "editar" ? "Editar caso" : "Novo caso", onClose: () => setModal(null) }, /* @__PURE__ */ React.createElement(M.CasoForm, { inicial: modal.caso, onSalvar: salvar, onCancelar: () => setModal(null) })));
         }
         function PrazosView({ toast }) {
           const [itens, setItens] = useState2([]);
@@ -694,7 +789,242 @@
           }
           return /* @__PURE__ */ React.createElement("div", { className: "grid grid-2" }, /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Perfil"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, "Suas informa\xE7\xF5es pessoais e profissionais"), /* @__PURE__ */ React.createElement("form", { onSubmit: salvar }, /* @__PURE__ */ React.createElement("div", { className: "form-field" }, /* @__PURE__ */ React.createElement("label", null, "Nome"), /* @__PURE__ */ React.createElement("input", { value: dados.nome || "", onChange: (e) => set("nome", e.target.value), required: true })), /* @__PURE__ */ React.createElement("div", { className: "form-field" }, /* @__PURE__ */ React.createElement("label", null, "E-mail"), /* @__PURE__ */ React.createElement("input", { type: "email", value: dados.email || "", onChange: (e) => set("email", e.target.value), required: true })), /* @__PURE__ */ React.createElement("div", { className: "form-row" }, /* @__PURE__ */ React.createElement("div", { className: "form-field" }, /* @__PURE__ */ React.createElement("label", null, "OAB"), /* @__PURE__ */ React.createElement("input", { value: dados.oab || "", onChange: (e) => set("oab", e.target.value) })), /* @__PURE__ */ React.createElement("div", { className: "form-field" }, /* @__PURE__ */ React.createElement("label", null, "Telefone"), /* @__PURE__ */ React.createElement("input", { value: dados.telefone || "", onChange: (e) => set("telefone", e.target.value) }))), /* @__PURE__ */ React.createElement("div", { className: "form-field" }, /* @__PURE__ */ React.createElement("label", null, "Plano"), /* @__PURE__ */ React.createElement("select", { value: dados.plano || "autonomo", onChange: (e) => set("plano", e.target.value) }, /* @__PURE__ */ React.createElement("option", { value: "autonomo" }, "Aut\xF4nomo"), /* @__PURE__ */ React.createElement("option", { value: "escritorio" }, "Escrit\xF3rio"), /* @__PURE__ */ React.createElement("option", { value: "boutique" }, "Boutique"))), /* @__PURE__ */ React.createElement("button", { type: "submit", className: "btn primary" }, "Salvar perfil"))), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("h3", null, "Conta"), /* @__PURE__ */ React.createElement("div", { className: "sub" }, "Informa\xE7\xF5es da sua assinatura"), /* @__PURE__ */ React.createElement("div", { style: { padding: 16, background: "var(--bg-3)", borderRadius: 8, marginTop: 12 } }, /* @__PURE__ */ React.createElement("div", { className: "muted tiny" }, "PLANO ATUAL"), /* @__PURE__ */ React.createElement("div", { style: { fontFamily: "var(--serif)", fontSize: 28, fontWeight: 600, marginTop: 4, textTransform: "capitalize" } }, dados.plano || "aut\xF4nomo"), /* @__PURE__ */ React.createElement("div", { className: "muted tiny mt-2" }, "Conta criada em ", fmtData(dados.criado_em))), /* @__PURE__ */ React.createElement("div", { className: "muted mt-4 tiny" }, "Em breve: gest\xE3o de equipe multi-usu\xE1rio, integra\xE7\xF5es externas (Google Calendar, WhatsApp, DJEn) e m\xF3dulo de IA jur\xEDdica para c\xE1lculo autom\xE1tico de prazos.")));
         }
-        global.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView };
+        function CompromissosView({ toast }) {
+          const [itens, setItens] = useState2([]);
+          const [carregando, setCarregando] = useState2(true);
+          const [filtro, setFiltro] = useState2("proximos");
+          const [edit, setEdit] = useState2(null);
+          async function carregar() {
+            setCarregando(true);
+            try {
+              const hoje = /* @__PURE__ */ new Date();
+              hoje.setHours(0, 0, 0, 0);
+              const fmtIso = (d) => d.toISOString().slice(0, 10);
+              const params = {};
+              const amanha = new Date(hoje);
+              amanha.setDate(hoje.getDate() + 1);
+              if (filtro === "hoje") {
+                params.de = fmtIso(hoje) + "T00:00:00";
+                params.ate = fmtIso(amanha) + "T00:00:00";
+              } else if (filtro === "atrasados") {
+                params.ate = fmtIso(hoje) + "T00:00:00";
+                params.status = "agendado";
+              } else if (filtro === "proximos") {
+                params.de = fmtIso(hoje) + "T00:00:00";
+                params.ate = fmtIso(new Date(hoje.getTime() + 30 * 864e5)) + "T23:59:59";
+                params.status = "agendado";
+              } else if (filtro === "concluidos") {
+                params.status = "concluido";
+              }
+              const r = await BasckApi.compromissos.listar(params);
+              let itens2 = r.itens || [];
+              if (filtro === "atrasados") {
+                itens2 = itens2.filter((c) => c.data_hora < fmtIso(hoje));
+              }
+              setItens(itens2);
+            } catch (e) {
+              toast(e.message, "error");
+            } finally {
+              setCarregando(false);
+            }
+          }
+          useEffect2(() => {
+            carregar();
+          }, [filtro]);
+          async function remover(id) {
+            if (!confirm("Remover este compromisso?")) return;
+            try {
+              await BasckApi.compromissos.remover(id);
+              toast("Removido", "success");
+              carregar();
+            } catch (e) {
+              toast(e.message, "error");
+            }
+          }
+          const tipoIcon = { audiencia: "\u2696", reuniao: "\u{1F91D}", prazo_judicial: "\u25F7", sessao: "\u25A6", diligencia: "\u{1F697}", outro: "\u25CC" };
+          const tipoLabel = { audiencia: "Audi\xEAncia", reuniao: "Reuni\xE3o", prazo_judicial: "Prazo judicial", sessao: "Sess\xE3o", diligencia: "Dilig\xEAncia", outro: "Outro" };
+          return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "toolbar" }, /* @__PURE__ */ React.createElement("div", { className: "toolbar-grupo" }, /* @__PURE__ */ React.createElement("button", { className: "chip" + (filtro === "proximos" ? " active" : ""), onClick: () => setFiltro("proximos") }, "Pr\xF3ximos"), /* @__PURE__ */ React.createElement("button", { className: "chip" + (filtro === "hoje" ? " active" : ""), onClick: () => setFiltro("hoje") }, "Hoje"), /* @__PURE__ */ React.createElement("button", { className: "chip" + (filtro === "atrasados" ? " active" : ""), onClick: () => setFiltro("atrasados") }, "Atrasados"), /* @__PURE__ */ React.createElement("button", { className: "chip" + (filtro === "concluidos" ? " active" : ""), onClick: () => setFiltro("concluidos") }, "Conclu\xEDdos"), /* @__PURE__ */ React.createElement("button", { className: "chip" + (filtro === "todos" ? " active" : ""), onClick: () => setFiltro("todos") }, "Todos")), /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setEdit({}) }, "+ Novo compromisso")), carregando ? /* @__PURE__ */ React.createElement("div", { className: "muted" }, "Carregando...") : itens.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "empty" }, "Nenhum compromisso neste filtro.") : /* @__PURE__ */ React.createElement("div", { className: "compromissos-grid" }, itens.map((c) => /* @__PURE__ */ React.createElement("div", { key: c.id, className: "compromisso-card" }, /* @__PURE__ */ React.createElement("div", { className: "compromisso-tipo tipo-{c.tipo}" }, tipoIcon[c.tipo] || "\u25CC", " ", tipoLabel[c.tipo] || c.tipo), /* @__PURE__ */ React.createElement("div", { className: "compromisso-titulo" }, c.titulo), /* @__PURE__ */ React.createElement("div", { className: "compromisso-data" }, c.data_hora_fmt || c.data_hora), c.caso_titulo && /* @__PURE__ */ React.createElement("div", { className: "compromisso-caso" }, "\u{1F4C1} ", c.caso_titulo), c.local && /* @__PURE__ */ React.createElement("div", { className: "compromisso-local" }, "\u{1F4CD} ", c.local), c.observacoes && /* @__PURE__ */ React.createElement("div", { className: "compromisso-obs" }, c.observacoes), /* @__PURE__ */ React.createElement("div", { className: "compromisso-acoes" }, /* @__PURE__ */ React.createElement("button", { className: "btn ghost", onClick: () => setEdit(c) }, "Editar"), /* @__PURE__ */ React.createElement("button", { className: "btn ghost danger", onClick: () => remover(c.id) }, "Excluir"))))), edit !== null && /* @__PURE__ */ React.createElement(
+            BasckModals.CompromissoForm,
+            {
+              inicial: edit.id ? edit : null,
+              onSalvar: () => {
+                setEdit(null);
+                carregar();
+                toast("Salvo", "success");
+              },
+              onCancelar: () => setEdit(null)
+            }
+          ));
+        }
+        const COLUNAS = [
+          { id: "a_fazer", label: "A fazer", cor: "#6b7280" },
+          { id: "em_andamento", label: "Em andamento", cor: "#3b82f6" },
+          { id: "em_revisao", label: "Em revis\xE3o", cor: "#f59e0b" },
+          { id: "concluido", label: "Conclu\xEDdo", cor: "#10b981" }
+        ];
+        function KanbanView({ toast }) {
+          const [cartoes, setCartoes] = useState2([]);
+          const [carregando, setCarregando] = useState2(true);
+          const [arrastando, setArrastando] = useState2(null);
+          const [edit, setEdit] = useState2(null);
+          async function carregar() {
+            setCarregando(true);
+            try {
+              const r = await BasckApi.kanban.listar();
+              setCartoes(r.itens || []);
+            } catch (e) {
+              toast(e.message, "error");
+            } finally {
+              setCarregando(false);
+            }
+          }
+          useEffect2(() => {
+            carregar();
+          }, []);
+          async function mover(cartaoId, novaColuna) {
+            const anterior = cartoes;
+            setCartoes((cs) => cs.map((c) => c.id === cartaoId ? { ...c, coluna: novaColuna } : c));
+            try {
+              await BasckApi.kanban.mover(cartaoId, { coluna: novaColuna });
+            } catch (e) {
+              toast(e.message, "error");
+              setCartoes(anterior);
+            }
+          }
+          async function remover(id) {
+            if (!confirm("Excluir este cart\xE3o?")) return;
+            try {
+              await BasckApi.kanban.remover(id);
+              toast("Removido", "success");
+              carregar();
+            } catch (e) {
+              toast(e.message, "error");
+            }
+          }
+          function onDragStart(c) {
+            setArrastando(c.id);
+          }
+          function onDragOver(e) {
+            e.preventDefault();
+          }
+          async function onDrop(coluna) {
+            if (arrastando) {
+              await mover(arrastando, coluna);
+              setArrastando(null);
+            }
+          }
+          return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "toolbar" }, /* @__PURE__ */ React.createElement("div", { className: "toolbar-grupo" }, /* @__PURE__ */ React.createElement("span", { className: "muted" }, cartoes.length, " cart\xE3o(\xF5es)")), /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setEdit({}) }, "+ Nova tarefa")), carregando ? /* @__PURE__ */ React.createElement("div", { className: "muted" }, "Carregando...") : /* @__PURE__ */ React.createElement("div", { className: "kanban-board" }, COLUNAS.map((col) => /* @__PURE__ */ React.createElement("div", { key: col.id, className: "kanban-coluna", onDragOver, onDrop: () => onDrop(col.id) }, /* @__PURE__ */ React.createElement("div", { className: "kanban-coluna-head", style: { borderColor: col.cor } }, /* @__PURE__ */ React.createElement("span", { style: { color: col.cor } }, "\u25CF"), " ", col.label, /* @__PURE__ */ React.createElement("span", { className: "badge" }, cartoes.filter((c) => c.coluna === col.id).length)), /* @__PURE__ */ React.createElement("div", { className: "kanban-coluna-body" }, cartoes.filter((c) => c.coluna === col.id).map((c) => /* @__PURE__ */ React.createElement("div", { key: c.id, className: "kanban-cartao", draggable: true, onDragStart: () => onDragStart(c) }, c.caso_titulo && /* @__PURE__ */ React.createElement("div", { className: "kanban-cartao-caso" }, "\u{1F4C1} ", c.caso_titulo), /* @__PURE__ */ React.createElement("div", { className: "kanban-cartao-titulo" }, c.titulo), c.descricao && /* @__PURE__ */ React.createElement("div", { className: "kanban-cartao-desc" }, c.descricao), /* @__PURE__ */ React.createElement("div", { className: "kanban-cartao-acoes" }, /* @__PURE__ */ React.createElement("button", { className: "btn ghost tiny", onClick: () => setEdit(c) }, "\u270E"), /* @__PURE__ */ React.createElement("button", { className: "btn ghost tiny danger", onClick: () => remover(c.id) }, "\u2715")))))))), edit !== null && /* @__PURE__ */ React.createElement(
+            BasckModals.KanbanForm,
+            {
+              inicial: edit.id ? edit : null,
+              onSalvar: () => {
+                setEdit(null);
+                carregar();
+                toast("Salvo", "success");
+              },
+              onCancelar: () => setEdit(null)
+            }
+          ));
+        }
+        function IntegracoesView({ toast }) {
+          const [integracoes, setIntegracoes] = useState2([]);
+          const [oabs, setOabs] = useState2([]);
+          const [tribunais, setTribunais] = useState2([]);
+          const [monitoramento, setMonitoramento] = useState2({ oabs: [], casos: [] });
+          const [carregando, setCarregando] = useState2(true);
+          const [edit, setEdit] = useState2(null);
+          const [editOab, setEditOab] = useState2(null);
+          const [resultado, setResultado] = useState2(null);
+          async function carregar() {
+            setCarregando(true);
+            try {
+              const [i, o, t, m] = await Promise.all([
+                BasckApi.integracoes.listar(),
+                BasckApi.integracoes.oab.listar(),
+                BasckApi.integracoes.tribunais(),
+                BasckApi.integracoes.monitoramento().catch(() => ({ oabs: [], casos: [] }))
+              ]);
+              setIntegracoes(i.itens || []);
+              setOabs(o.itens || []);
+              setTribunais(t.tribunais || t.itens || []);
+              setMonitoramento({ oabs: m.oabs || [], casos: m.casos || [] });
+            } catch (e) {
+              toast(e.message, "error");
+            } finally {
+              setCarregando(false);
+            }
+          }
+          useEffect2(() => {
+            carregar();
+          }, []);
+          async function remover(id) {
+            if (!confirm("Remover esta integra\xE7\xE3o?")) return;
+            try {
+              await BasckApi.integracoes.remover(id);
+              toast("Removido", "success");
+              carregar();
+            } catch (e) {
+              toast(e.message, "error");
+            }
+          }
+          async function removerOab(id) {
+            if (!confirm("Remover esta OAB?")) return;
+            try {
+              await BasckApi.integracoes.oab.remover(id);
+              toast("Removido", "success");
+              carregar();
+            } catch (e) {
+              toast(e.message, "error");
+            }
+          }
+          async function consultar(intId) {
+            try {
+              const r = await BasckApi.integracoes.consultar(intId);
+              const dados = r.resultado || r;
+              setResultado(dados);
+              toast(dados.sucesso ? "Consulta realizada" : "Consulta conclu\xEDda", dados.sucesso ? "success" : "info");
+              if (dados.sucesso) carregar();
+            } catch (e) {
+              toast(e.message, "error");
+            }
+          }
+          async function verificarOab(oabId) {
+            try {
+              const r = await BasckApi.integracoes.oab.verificar(oabId);
+              const dados = r.item || r;
+              setResultado({ oab: true, ...dados });
+              toast("Verifica\xE7\xE3o realizada", "success");
+              carregar();
+            } catch (e) {
+              toast(e.message, "error");
+            }
+          }
+          return /* @__PURE__ */ React.createElement("div", null, /* @__PURE__ */ React.createElement("div", { className: "banner-info" }, /* @__PURE__ */ React.createElement("strong", null, "DataJud (CNJ)"), " \u2014 Solicite uma API Key gratuita em ", /* @__PURE__ */ React.createElement("a", { href: "https://datajud.cnj.jus.br", target: "_blank", rel: "noopener" }, "datajud.cnj.jus.br"), " para consultar processos em tribunais reais. As credenciais s\xE3o criptografadas com AES-256-GCM."), /* @__PURE__ */ React.createElement("div", { className: "card" }, /* @__PURE__ */ React.createElement("div", { className: "card-head" }, /* @__PURE__ */ React.createElement("h3", null, "Credenciais de tribunais"), /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setEdit({}) }, "+ Nova integra\xE7\xE3o")), carregando ? /* @__PURE__ */ React.createElement("div", { className: "muted" }, "Carregando...") : integracoes.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "empty" }, "Nenhuma integra\xE7\xE3o cadastrada.") : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Tribunal"), /* @__PURE__ */ React.createElement("th", null, "Identificador"), /* @__PURE__ */ React.createElement("th", null, "\xDAltima consulta"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, integracoes.map((i) => /* @__PURE__ */ React.createElement("tr", { key: i.id }, /* @__PURE__ */ React.createElement("td", null, i.tribunal_nome, " ", /* @__PURE__ */ React.createElement("span", { className: "badge-tiny" }, "\u{1F512} criptografado")), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("code", null, i.identificador)), /* @__PURE__ */ React.createElement("td", { className: "muted" }, i.ultima_consulta || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "acoes" }, /* @__PURE__ */ React.createElement("button", { className: "btn ghost tiny", onClick: () => consultar(i.id) }, "Consultar"), /* @__PURE__ */ React.createElement("button", { className: "btn ghost tiny", onClick: () => setEdit(i) }, "Editar"), /* @__PURE__ */ React.createElement("button", { className: "btn ghost tiny danger", onClick: () => remover(i.id) }, "Excluir"))))))), /* @__PURE__ */ React.createElement("div", { className: "card mt-3" }, /* @__PURE__ */ React.createElement("div", { className: "card-head" }, /* @__PURE__ */ React.createElement("h3", null, "Monitoramento de OAB"), /* @__PURE__ */ React.createElement("button", { className: "btn primary", onClick: () => setEditOab({}) }, "+ Monitorar OAB")), oabs.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "empty" }, "Nenhuma OAB monitorada.") : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "N\xFAmero"), /* @__PURE__ */ React.createElement("th", null, "Nome"), /* @__PURE__ */ React.createElement("th", null, "Situa\xE7\xE3o"), /* @__PURE__ */ React.createElement("th", null, "\xDAltima verifica\xE7\xE3o"), /* @__PURE__ */ React.createElement("th", null))), /* @__PURE__ */ React.createElement("tbody", null, oabs.map((o) => /* @__PURE__ */ React.createElement("tr", { key: o.id }, /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("code", null, o.numero_oab || o.numero), o.uf ? " / " + o.uf : ""), /* @__PURE__ */ React.createElement("td", null, o.nome || "\u2014"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "badge-situacao sit-" + (o.situacao || "desconhecida") }, o.situacao || "desconhecida")), /* @__PURE__ */ React.createElement("td", { className: "muted" }, o.ultima_verificacao || "\u2014"), /* @__PURE__ */ React.createElement("td", { className: "acoes" }, /* @__PURE__ */ React.createElement("button", { className: "btn ghost tiny", onClick: () => verificarOab(o.id) }, "Verificar agora"), /* @__PURE__ */ React.createElement("button", { className: "btn ghost tiny danger", onClick: () => removerOab(o.id) }, "Excluir"))))))), edit !== null && /* @__PURE__ */ React.createElement(
+            BasckModals.IntegracaoForm,
+            {
+              inicial: edit.id ? edit : null,
+              tribunais,
+              onSalvar: () => {
+                setEdit(null);
+                carregar();
+                toast("Salvo", "success");
+              },
+              onCancelar: () => setEdit(null)
+            }
+          ), editOab !== null && /* @__PURE__ */ React.createElement(
+            BasckModals.OabForm,
+            {
+              inicial: editOab.id ? editOab : null,
+              onSalvar: () => {
+                setEditOab(null);
+                carregar();
+                toast("Salvo", "success");
+              },
+              onCancelar: () => setEditOab(null)
+            }
+          ), /* @__PURE__ */ React.createElement("div", { className: "card mt-3" }, /* @__PURE__ */ React.createElement("div", { className: "card-head" }, /* @__PURE__ */ React.createElement("h3", null, "Processos monitorados"), /* @__PURE__ */ React.createElement("span", { className: "muted tiny" }, monitoramento.casos.length, " caso(s) vinculado(s) a ", monitoramento.oabs.length, " OAB(s)")), monitoramento.casos.length === 0 ? /* @__PURE__ */ React.createElement("div", { className: "empty" }, "Nenhum caso vinculado a uma OAB monitorada ainda. Crie um caso que esteja associado a uma OAB monitorada para que apareca aqui automaticamente.") : /* @__PURE__ */ React.createElement("table", { className: "table" }, /* @__PURE__ */ React.createElement("thead", null, /* @__PURE__ */ React.createElement("tr", null, /* @__PURE__ */ React.createElement("th", null, "Caso"), /* @__PURE__ */ React.createElement("th", null, "Numero do processo"), /* @__PURE__ */ React.createElement("th", null, "Tribunal"), /* @__PURE__ */ React.createElement("th", null, "Cliente"), /* @__PURE__ */ React.createElement("th", null, "Vinculado a OAB"), /* @__PURE__ */ React.createElement("th", null, "Status"))), /* @__PURE__ */ React.createElement("tbody", null, monitoramento.casos.map((c) => /* @__PURE__ */ React.createElement("tr", { key: c.id }, /* @__PURE__ */ React.createElement("td", null, c.titulo), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("code", null, c.numero_processo || "\u2014")), /* @__PURE__ */ React.createElement("td", { className: "muted" }, c.tribunal || "\u2014"), /* @__PURE__ */ React.createElement("td", null, c.cliente_nome || "\u2014"), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("code", null, c.numero_oab || "\u2014"), c.oab_uf ? " / " + c.oab_uf : ""), /* @__PURE__ */ React.createElement("td", null, /* @__PURE__ */ React.createElement("span", { className: "badge-situacao sit-" + (c.status || "desconhecido") }, c.status || "desconhecido"))))))), resultado && /* @__PURE__ */ React.createElement(BasckModals.Modal, { titulo: "Resultado da consulta", onClose: () => setResultado(null), lg: true }, /* @__PURE__ */ React.createElement("div", { className: "modal-body" }, /* @__PURE__ */ React.createElement("pre", { className: "resultado-json" }, JSON.stringify(resultado, null, 2)))));
+        }
+        window.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView, CompromissosView, KanbanView, IntegracoesView, CasoDetalhesView: BasckCasoDetalhes.CasoDetalhesView };
       })(window);
       (function(global) {
         const { useState: useState2, useEffect: useEffect2, useRef, useCallback: useCallback2 } = React;

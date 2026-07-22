@@ -174,7 +174,11 @@
     const [busca, setBusca] = useState('');
     const [statusFiltro, setStatusFiltro] = useState('');
     const [modal, setModal] = useState(null);
-    const [detalhe, setDetalhe] = useState(null);
+    const [casoAbertoId, setCasoAbertoId] = useState(null);
+
+    if (casoAbertoId) {
+      return <BasckCasoDetalhes.CasoDetalhesView casoId={casoAbertoId} onVoltar={() => setCasoAbertoId(null)} toast={toast} />;
+    }
 
     function carregar() {
       setCarregando(true);
@@ -226,7 +230,7 @@
                 <thead><tr><th>Título</th><th>Cliente</th><th>Área</th><th>Nº processo</th><th>Status</th><th></th></tr></thead>
                 <tbody>
                   {itens.map((c) => (
-                    <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => setDetalhe(c)}>
+                    <tr key={c.id} style={{ cursor: 'pointer' }} onClick={() => setCasoAbertoId(c.id)}>
                       <td><div style={{ fontWeight: 500 }}>{c.titulo}</div><div className="tiny">{c.tribunal || '—'}</div></td>
                       <td className="muted">{c.cliente_nome || '—'}</td>
                       <td className="muted">{c.area || '—'}</td>
@@ -1066,5 +1070,5 @@
     );
   }
 
-  window.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView, CompromissosView, KanbanView, IntegracoesView };
+  window.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView, CompromissosView, KanbanView, IntegracoesView, CasoDetalhesView: BasckCasoDetalhes.CasoDetalhesView };
 })(window);

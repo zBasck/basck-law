@@ -84,9 +84,15 @@
       },
       estatisticas: () => request('/api/casos/estatisticas'),
       buscar: (id) => request(`/api/casos/${id}`),
+      detalhes: (id) => request(`/api/casos/${id}/detalhes`),
       criar: (d) => request('/api/casos', { method: 'POST', body: d }),
       atualizar: (id, d) => request(`/api/casos/${id}`, { method: 'PUT', body: d }),
-      remover: (id) => request(`/api/casos/${id}`, { method: 'DELETE' })
+      remover: (id) => request(`/api/casos/${id}`, { method: 'DELETE' }),
+      andamentos: {
+        listar: (casoId) => request(`/api/casos/${casoId}/andamentos`),
+        criar: (casoId, d) => request(`/api/casos/${casoId}/andamentos`, { method: 'POST', body: d }),
+        remover: (casoId, andamentoId) => request(`/api/casos/${casoId}/andamentos/${andamentoId}`, { method: 'DELETE' })
+      }
     },
 
     prazos: {

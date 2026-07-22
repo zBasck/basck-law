@@ -231,3 +231,21 @@ CREATE TABLE IF NOT EXISTS oab_monitoramento (
 );
 CREATE INDEX IF NOT EXISTS idx_oab_usuario ON oab_monitoramento(usuario_id);
 CREATE INDEX IF NOT EXISTS idx_oab_numero ON oab_monitoramento(numero_oab, uf);
+
+-- v1.4.0 — Andamentos do caso (timeline cronológica)
+CREATE TABLE IF NOT EXISTS caso_andamentos (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  caso_id INTEGER NOT NULL,
+  usuario_id INTEGER NOT NULL,
+  data TEXT NOT NULL,
+  tipo TEXT,
+  descricao TEXT NOT NULL,
+  origem TEXT NOT NULL DEFAULT 'manual',
+  fonte_externa_id TEXT,
+  criado_em TEXT NOT NULL DEFAULT (datetime('now')),
+  FOREIGN KEY (caso_id) REFERENCES casos(id) ON DELETE CASCADE,
+  FOREIGN KEY (usuario_id) REFERENCES usuarios(id) ON DELETE CASCADE
+);
+CREATE INDEX IF NOT EXISTS idx_andamentos_caso ON caso_andamentos(caso_id);
+CREATE INDEX IF NOT EXISTS idx_andamentos_usuario ON caso_andamentos(usuario_id);
+CREATE INDEX IF NOT EXISTS idx_andamentos_data ON caso_andamentos(data DESC);

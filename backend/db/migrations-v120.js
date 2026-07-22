@@ -13,5 +13,9 @@ module.exports = [
   { sql: "ALTER TABLE tarefas ADD COLUMN origem TEXT", descricao: 'coluna origem em tarefas' },
   // v1.3.0 — vinculacao caso <-> monitoramento OAB
   { sql: "ALTER TABLE casos ADD COLUMN oab_monitoramento_id INTEGER", descricao: 'coluna oab_monitoramento_id em casos' },
-  { sql: "CREATE INDEX IF NOT EXISTS idx_casos_oab ON casos(oab_monitoramento_id)", descricao: 'index idx_casos_oab em casos' }
+  { sql: "CREATE INDEX IF NOT EXISTS idx_casos_oab ON casos(oab_monitoramento_id)", descricao: 'index idx_casos_oab em casos' },
+  // v1.4.0 — andamentos do caso (timeline)
+  { sql: "CREATE TABLE IF NOT EXISTS caso_andamentos (id INTEGER PRIMARY KEY AUTOINCREMENT, caso_id INTEGER NOT NULL, usuario_id INTEGER NOT NULL, data TEXT NOT NULL, tipo TEXT, descricao TEXT NOT NULL, origem TEXT NOT NULL DEFAULT 'manual', fonte_externa_id TEXT, criado_em TEXT NOT NULL DEFAULT (datetime('now')))", descricao: 'tabela caso_andamentos' },
+  { sql: "CREATE INDEX IF NOT EXISTS idx_andamentos_caso ON caso_andamentos(caso_id)", descricao: 'index caso_andamentos.caso_id' },
+  { sql: "CREATE INDEX IF NOT EXISTS idx_andamentos_usuario ON caso_andamentos(usuario_id)", descricao: 'index caso_andamentos.usuario_id' }
 ];

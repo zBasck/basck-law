@@ -19,6 +19,7 @@ const FILES = [
   'api.js',
   'auth.js',
   'modals.js',
+  'casoDetalhes.js',
   'ui.js',
   'busca.js',
   'app.js',

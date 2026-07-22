@@ -50,8 +50,16 @@ async function remover(req, res) {
   res.status(204).send();
 }
 
+async function detalhes(req, res) {
+  const id = Number(req.params.id);
+  if (!Number.isInteger(id)) throw new HttpError(400, 'id inválido');
+  const d = CasoModel.detalhes(id, req.usuario.id);
+  if (!d) throw new HttpError(404, 'Caso não encontrado');
+  res.json(d);
+}
+
 async function estatisticas(req, res) {
   res.json(CasoModel.estatisticas(req.usuario.id));
 }
 
-module.exports = { listar, buscar, criar, atualizar, remover, estatisticas };
+module.exports = { listar, buscar, criar, atualizar, remover, estatisticas, detalhes };
