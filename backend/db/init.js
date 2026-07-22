@@ -8,6 +8,7 @@ const { DatabaseSync } = require('node:sqlite');
 
 const DEFAULT_DB_PATH = path.join(__dirname, 'basck.db');
 const SCHEMA_PATH = path.join(__dirname, 'schema.sql');
+const MIGRATIONS_V120 = require('./migrations-v120');
 
 let _db = null;
 
@@ -26,7 +27,9 @@ function getDb() {
 const MIGRATIONS = [
   // v1.1.0 — auditoria do cálculo de prazo
   { sql: "ALTER TABLE prazos ADD COLUMN calculo_detalhes TEXT", descricao: 'coluna calculo_detalhes em prazos' },
-  { sql: "ALTER TABLE prazos ADD COLUMN calculo_regra TEXT", descricao: 'coluna calculo_regra em prazos' }
+  { sql: "ALTER TABLE prazos ADD COLUMN calculo_regra TEXT", descricao: 'coluna calculo_regra em prazos' },
+  // v1.2.0+ — importadas de migrations-v120.js
+  ...MIGRATIONS_V120
 ];
 
 function safeExec(db, sql) {

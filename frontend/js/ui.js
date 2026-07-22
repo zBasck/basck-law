@@ -2,7 +2,7 @@
 // Views do Basck Law (Dashboard, Casos, Prazos, Tarefas, Financeiro, Clientes, Documentos, Config)
 (function (global) {
   const { useState, useEffect, useMemo } = React;
-  const M = global.BasckModals;
+  const M = window.BasckModals;
 
   function fmtData(s) {
     if (!s) return '—';
@@ -708,5 +708,311 @@
     );
   }
 
-  global.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView };
+  // =================== COMPROMISSOS ===================
+  function CompromissosView({ toast }) {
+    const [itens, setItens] = useState([]);
+    const [carregando, setCarregando] = useState(true);
+    const [filtro, setFiltro] = useState('proximos');
+    const [edit, setEdit] = useState(null);
+
+    async function carregar() {
+      setCarregando(true);
+      try {
+        const r = await BasckApi.compromissos.listar({ filtro });
+        setItens(r.itens || []);
+      } catch (e) { toast(e.message, 'error'); }
+      finally { setCarregando(false); }
+    }
+
+    useEffect(() => { carregar(); }, [filtro]);
+
+    async function remover(id) {
+      if (!confirm('Remover este compromisso?')) return;
+      try { await BasckApi.compromissos.remover(id); toast('Removido', 'success'); carregar(); }
+      catch (e) { toast(e.message, 'error'); }
+    }
+
+    const tipoIcon = { audiencia: '⚖', reuniao: '🤝', prazo_fatal: '◷', diligencia: '🚗', outro: '◌' };
+    const tipoLabel = { audiencia: 'Audiência', reuniao: 'Reunião', prazo_fatal: 'Prazo fatal', diligencia: 'Diligência', outro: 'Outro' };
+
+    return (
+      <div>
+        <div className="toolbar">
+          <div className="toolbar-grupo">
+            <button className={'chip' + (filtro === 'proximos' ? ' active' : '')} onClick={() => setFiltro('proximos')}>Próximos</button>
+            <button className={'chip' + (filtro === 'hoje' ? ' active' : '')} onClick={() => setFiltro('hoje')}>Hoje</button>
+            <button className={'chip' + (filtro === 'atrasados' ? ' active' : '')} onClick={() => setFiltro('atrasados')}>Atrasados</button>
+            <button className={'chip' + (filtro === 'concluidos' ? ' active' : '')} onClick={() => setFiltro('concluidos')}>Concluídos</button>
+            <button className={'chip' + (filtro === 'todos' ? ' active' : '')} onClick={() => setFiltro('todos')}>Todos</button>
+          </div>
+          <button className="btn primary" onClick={() => setEdit({})}>+ Novo compromisso</button>
+        </div>
+
+        {carregando ? <div className="muted">Carregando...</div> :
+         itens.length === 0 ? <div className="empty">Nenhum compromisso neste filtro.</div> :
+         <div className="compromissos-grid">
+           {itens.map((c) => (
+             <div key={c.id} className="compromisso-card">
+               <div className="compromisso-tipo tipo-{c.tipo}">{tipoIcon[c.tipo] || '◌'} {tipoLabel[c.tipo] || c.tipo}</div>
+               <div className="compromisso-titulo">{c.titulo}</div>
+               <div className="compromisso-data">{c.data_hora_fmt || c.data_hora}</div>
+               {c.caso_titulo && <div className="compromisso-caso">📁 {c.caso_titulo}</div>}
+               {c.local && <div className="compromisso-local">📍 {c.local}</div>}
+               {c.observacoes && <div className="compromisso-obs">{c.observacoes}</div>}
+               <div className="compromisso-acoes">
+                 <button className="btn ghost" onClick={() => setEdit(c)}>Editar</button>
+                 <button className="btn ghost danger" onClick={() => remover(c.id)}>Excluir</button>
+               </div>
+             </div>
+           ))}
+         </div>}
+
+        {edit !== null && (
+          <BasckModals.CompromissoForm
+            inicial={edit.id ? edit : null}
+            onSalvar={() => { setEdit(null); carregar(); toast('Salvo', 'success'); }}
+            onCancelar={() => setEdit(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // =================== KANBAN ===================
+  const COLUNAS = [
+    { id: 'a_fazer', label: 'A fazer', cor: '#6b7280' },
+    { id: 'em_andamento', label: 'Em andamento', cor: '#3b82f6' },
+    { id: 'em_revisao', label: 'Em revisão', cor: '#f59e0b' },
+    { id: 'concluido', label: 'Concluído', cor: '#10b981' }
+  ];
+
+  function KanbanView({ toast }) {
+    const [cartoes, setCartoes] = useState([]);
+    const [carregando, setCarregando] = useState(true);
+    const [arrastando, setArrastando] = useState(null);
+    const [edit, setEdit] = useState(null);
+
+    async function carregar() {
+      setCarregando(true);
+      try {
+        const r = await BasckApi.kanban.listar();
+        setCartoes(r.itens || []);
+      } catch (e) { toast(e.message, 'error'); }
+      finally { setCarregando(false); }
+    }
+
+    useEffect(() => { carregar(); }, []);
+
+    async function mover(cartaoId, novaColuna) {
+      const anterior = cartoes;
+      // otimista
+      setCartoes((cs) => cs.map((c) => c.id === cartaoId ? { ...c, coluna: novaColuna } : c));
+      try {
+        await BasckApi.kanban.mover(cartaoId, { coluna: novaColuna });
+      } catch (e) {
+        toast(e.message, 'error');
+        setCartoes(anterior);
+      }
+    }
+
+    async function remover(id) {
+      if (!confirm('Excluir este cartão?')) return;
+      try { await BasckApi.kanban.remover(id); toast('Removido', 'success'); carregar(); }
+      catch (e) { toast(e.message, 'error'); }
+    }
+
+    function onDragStart(c) { setArrastando(c.id); }
+    function onDragOver(e) { e.preventDefault(); }
+    async function onDrop(coluna) {
+      if (arrastando) {
+        await mover(arrastando, coluna);
+        setArrastando(null);
+      }
+    }
+
+    return (
+      <div>
+        <div className="toolbar">
+          <div className="toolbar-grupo"><span className="muted">{cartoes.length} cartão(ões)</span></div>
+          <button className="btn primary" onClick={() => setEdit({})}>+ Nova tarefa</button>
+        </div>
+
+        {carregando ? <div className="muted">Carregando...</div> :
+         <div className="kanban-board">
+           {COLUNAS.map((col) => (
+             <div key={col.id} className="kanban-coluna" onDragOver={onDragOver} onDrop={() => onDrop(col.id)}>
+               <div className="kanban-coluna-head" style={{ borderColor: col.cor }}>
+                 <span style={{ color: col.cor }}>●</span> {col.label}
+                 <span className="badge">{cartoes.filter((c) => c.coluna === col.id).length}</span>
+               </div>
+               <div className="kanban-coluna-body">
+                 {cartoes.filter((c) => c.coluna === col.id).map((c) => (
+                   <div key={c.id} className="kanban-cartao" draggable onDragStart={() => onDragStart(c)}>
+                     {c.caso_titulo && <div className="kanban-cartao-caso">📁 {c.caso_titulo}</div>}
+                     <div className="kanban-cartao-titulo">{c.titulo}</div>
+                     {c.descricao && <div className="kanban-cartao-desc">{c.descricao}</div>}
+                     <div className="kanban-cartao-acoes">
+                       <button className="btn ghost tiny" onClick={() => setEdit(c)}>✎</button>
+                       <button className="btn ghost tiny danger" onClick={() => remover(c.id)}>✕</button>
+                     </div>
+                   </div>
+                 ))}
+               </div>
+             </div>
+           ))}
+         </div>}
+
+        {edit !== null && (
+          <BasckModals.KanbanForm
+            inicial={edit.id ? edit : null}
+            onSalvar={() => { setEdit(null); carregar(); toast('Salvo', 'success'); }}
+            onCancelar={() => setEdit(null)}
+          />
+        )}
+      </div>
+    );
+  }
+
+  // =================== INTEGRAÇÕES ===================
+  function IntegracoesView({ toast }) {
+    const [integracoes, setIntegracoes] = useState([]);
+    const [oabs, setOabs] = useState([]);
+    const [tribunais, setTribunais] = useState([]);
+    const [carregando, setCarregando] = useState(true);
+    const [edit, setEdit] = useState(null);
+    const [editOab, setEditOab] = useState(null);
+    const [resultado, setResultado] = useState(null);
+
+    async function carregar() {
+      setCarregando(true);
+      try {
+        const [i, o, t] = await Promise.all([
+          BasckApi.integracoes.listar(),
+          BasckApi.integracoes.oab.listar(),
+          BasckApi.integracoes.tribunais()
+        ]);
+        setIntegracoes(i.itens || []);
+        setOabs(o.itens || []);
+        setTribunais(t.tribunais || t.itens || []);
+      } catch (e) { toast(e.message, 'error'); }
+      finally { setCarregando(false); }
+    }
+
+    useEffect(() => { carregar(); }, []);
+
+    async function remover(id) {
+      if (!confirm('Remover esta integração?')) return;
+      try { await BasckApi.integracoes.remover(id); toast('Removido', 'success'); carregar(); }
+      catch (e) { toast(e.message, 'error'); }
+    }
+    async function removerOab(id) {
+      if (!confirm('Remover esta OAB?')) return;
+      try { await BasckApi.integracoes.oab.remover(id); toast('Removido', 'success'); carregar(); }
+      catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function consultar(intId) {
+      try {
+        const r = await BasckApi.integracoes.consultar(intId);
+        setResultado(r);
+        toast(r.sucesso ? 'Consulta realizada' : 'Consulta falhou', r.sucesso ? 'success' : 'error');
+        if (r.sucesso) carregar();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    async function verificarOab(oabId) {
+      try {
+        const r = await BasckApi.integracoes.oab.verificar(oabId);
+        setResultado({ oab: true, ...r });
+        toast('Verificação realizada', 'success');
+        carregar();
+      } catch (e) { toast(e.message, 'error'); }
+    }
+
+    return (
+      <div>
+        <div className="banner-info">
+          <strong>DataJud (CNJ)</strong> — Solicite uma API Key gratuita em <a href="https://datajud.cnj.jus.br" target="_blank" rel="noopener">datajud.cnj.jus.br</a> para consultar processos em tribunais reais. As credenciais são criptografadas com AES-256-GCM.
+        </div>
+
+        <div className="card">
+          <div className="card-head">
+            <h3>Credenciais de tribunais</h3>
+            <button className="btn primary" onClick={() => setEdit({})}>+ Nova integração</button>
+          </div>
+          {carregando ? <div className="muted">Carregando...</div> :
+           integracoes.length === 0 ? <div className="empty">Nenhuma integração cadastrada.</div> :
+           <table className="table">
+             <thead><tr><th>Tribunal</th><th>Identificador</th><th>Última consulta</th><th></th></tr></thead>
+             <tbody>
+               {integracoes.map((i) => (
+                 <tr key={i.id}>
+                   <td>{i.tribunal_nome} <span className="badge-tiny">🔒 criptografado</span></td>
+                   <td><code>{i.identificador}</code></td>
+                   <td className="muted">{i.ultima_consulta || '—'}</td>
+                   <td className="acoes">
+                     <button className="btn ghost tiny" onClick={() => consultar(i.id)}>Consultar</button>
+                     <button className="btn ghost tiny" onClick={() => setEdit(i)}>Editar</button>
+                     <button className="btn ghost tiny danger" onClick={() => remover(i.id)}>Excluir</button>
+                   </td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>}
+        </div>
+
+        <div className="card mt-3">
+          <div className="card-head">
+            <h3>Monitoramento de OAB</h3>
+            <button className="btn primary" onClick={() => setEditOab({})}>+ Monitorar OAB</button>
+          </div>
+          {oabs.length === 0 ? <div className="empty">Nenhuma OAB monitorada.</div> :
+           <table className="table">
+             <thead><tr><th>Número</th><th>Nome</th><th>Situação</th><th>Última verificação</th><th></th></tr></thead>
+             <tbody>
+               {oabs.map((o) => (
+                 <tr key={o.id}>
+                   <td><code>{o.numero_oab || o.numero}</code>{o.uf ? ' / ' + o.uf : ''}</td>
+                   <td>{o.nome || '—'}</td>
+                   <td><span className={'badge-situacao sit-' + (o.situacao || 'desconhecida')}>{o.situacao || 'desconhecida'}</span></td>
+                   <td className="muted">{o.ultima_verificacao || '—'}</td>
+                   <td className="acoes">
+                     <button className="btn ghost tiny" onClick={() => verificarOab(o.id)}>Verificar agora</button>
+                     <button className="btn ghost tiny danger" onClick={() => removerOab(o.id)}>Excluir</button>
+                   </td>
+                 </tr>
+               ))}
+             </tbody>
+           </table>}
+        </div>
+
+        {edit !== null && (
+          <BasckModals.IntegracaoForm
+            inicial={edit.id ? edit : null}
+            tribunais={tribunais}
+            onSalvar={() => { setEdit(null); carregar(); toast('Salvo', 'success'); }}
+            onCancelar={() => setEdit(null)}
+          />
+        )}
+
+        {editOab !== null && (
+          <BasckModals.OabForm
+            inicial={editOab.id ? editOab : null}
+            onSalvar={() => { setEditOab(null); carregar(); toast('Salvo', 'success'); }}
+            onCancelar={() => setEditOab(null)}
+          />
+        )}
+
+        {resultado && (
+          <BasckModals.Modal titulo="Resultado da consulta" onClose={() => setResultado(null)} lg>
+            <div className="modal-body">
+              <pre className="resultado-json">{JSON.stringify(resultado, null, 2)}</pre>
+            </div>
+          </BasckModals.Modal>
+        )}
+      </div>
+    );
+  }
+
+  window.BasckUI = { DashboardView, CasosView, PrazosView, TarefasView, ClientesView, FinanceiroView, DocumentosView, ConfiguracoesView, CompromissosView, KanbanView, IntegracoesView };
 })(window);

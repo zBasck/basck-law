@@ -167,5 +167,5 @@
     );
   }
 
-  global.BasckBusca = { BuscaModal };
+  window.BasckBusca = { BuscaModal };
 })(window);
