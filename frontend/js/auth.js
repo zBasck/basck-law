@@ -90,5 +90,5 @@
     );
   }
 
-  global.BasckAuth = { LoginView };
+  window.BasckAuth = { LoginView };
 })(window);

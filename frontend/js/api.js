@@ -47,7 +47,7 @@
     if (!res.ok) {
       if (res.status === 401) {
         clearSession();
-        if (global.location && global.location.pathname !== '/') global.location.href = '/';
+        if (window.location && window.location.pathname !== '/') window.location.href = '/';
       }
       const erro = new Error((data && data.erro) || `Erro ${res.status}`);
       erro.status = res.status;
@@ -134,8 +134,48 @@
       marcarPago: (id, d) => request(`/api/financeiro/${id}/marcar-pago`, { method: 'POST', body: d }),
       remover: (id) => request(`/api/financeiro/${id}`, { method: 'DELETE' }),
       csvUrl: () => '/api/financeiro/exportar.csv'
-    }
+    },
+
+    compromissos: {
+      listar: (params = {}) => {
+        const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+        return request('/api/compromissos' + (q ? '?' + q : ''));
+      },
+      estatisticas: () => request('/api/compromissos/estatisticas'),
+      buscar: (id) => request(`/api/compromissos/${id}`),
+      criar: (d) => request('/api/compromissos', { method: 'POST', body: d }),
+      atualizar: (id, d) => request(`/api/compromissos/${id}`, { method: 'PUT', body: d }),
+      remover: (id) => request(`/api/compromissos/${id}`, { method: 'DELETE' })
+    },
+
+    kanban: {
+      listar: (params = {}) => {
+        const q = new URLSearchParams(Object.entries(params).filter(([_, v]) => v != null && v !== '')).toString();
+        return request('/api/kanban' + (q ? '?' + q : ''));
+      },
+      estatisticas: () => request('/api/kanban/estatisticas'),
+      criar: (d) => request('/api/kanban', { method: 'POST', body: d }),
+      mover: (id, dados) => request(`/api/kanban/${id}/mover`, { method: 'PUT', body: dados }),
+      atualizar: (id, d) => request(`/api/kanban/${id}`, { method: 'PUT', body: d }),
+      remover: (id) => request(`/api/kanban/${id}`, { method: 'DELETE' })
+    },
+
+    integracoes: {
+      tribunais: () => request('/api/integracoes/tribunais'),
+      listar: () => request('/api/integracoes'),
+      buscar: (id) => request(`/api/integracoes/${id}`),
+      criar: (d) => request('/api/integracoes', { method: 'POST', body: d }),
+      atualizar: (id, d) => request(`/api/integracoes/${id}`, { method: 'PUT', body: d }),
+      remover: (id) => request(`/api/integracoes/${id}`, { method: 'DELETE' }),
+      consultar: (id) => request(`/api/integracoes/${id}/consultar`, { method: 'POST' }),
+      oab: {
+        listar: () => request('/api/integracoes/oab/listar'),
+        criar: (d) => request('/api/integracoes/oab', { method: 'POST', body: d }),
+        verificar: (id) => request(`/api/integracoes/oab/${id}/verificar`, { method: 'POST' }),
+        remover: (id) => request(`/api/integracoes/oab/${id}`, { method: 'DELETE' })
+      }
+    },
   };
 
-  global.BasckApi = api;
+  window.BasckApi = api;
 })(window);

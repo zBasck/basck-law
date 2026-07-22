@@ -3,6 +3,32 @@
 Todas as alteracoes relevantes do projeto sao documentadas aqui.
 O versionamento segue SemVer.
 
+## [1.2.9] - 2026-07-22
+
+### Corrigido
+- **Kanban "No such column: prazo"**: `KanbanModel.listar` lia a coluna inexistente `prazo`
+  em `tarefas`; agora usa `data_vencimento` e espelha o valor em `cart.prazo`.
+- **Erro ao consultar processo e OAB**: a `IntegracoesView` esperava o objeto direto com
+  `sucesso`, mas o controller embrulha em `{resultado: {...}}` e `{item: {...}}`.
+  Agora a view desempacota os dois formatos antes de mostrar.
+- **Tela vermelha ao criar caso**: o `CasoForm` enviava `cliente_id: ''` quando a lista
+  de clientes ainda nao havia carregado; agora o estado inicial usa string vazia e o
+  submit converte para `Number` (ou `null`).
+- **Tela vermelha ao criar prazo**: o `PrazoForm` tinha o mesmo problema do `caso_id`
+  alem de enviar `data_inicio` sem normalizar; agora faz `.slice(0, 10)` para garantir
+  o formato YYYY-MM-DD.
+- **Calendario nao aparecia em Compromissos**: o `CompromissoForm` usava
+  `<input type="datetime-local">` nativo; trocado por `BasckDateInput.DateInput` (igual
+  aos demais formularios).
+
+### Adicionado
+- **Filtros reais em Compromissos**: o frontend agora traduz os chips
+  (proximos/hoje/atrasados/concluidos) em parametros `status`/`de`/`ate` que o backend
+  ja aceitava, e filtra atrasados por data_hora.
+- **Labels de tipo corretos**: `prazo_judicial` e `sessao` agora aparecem nos icones
+  e na badge colorida (eram `prazo_fatal`, que nao existe no enum do backend).
+
+## [1.2.8] - 2026-07-22
 ## [1.1.2] - 2026-07-20
 
 ### Corrigido
