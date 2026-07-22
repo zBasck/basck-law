@@ -83,19 +83,23 @@
   function CasoForm({ inicial, onSalvar, onCancelar }) {
     const clientes = useClientesOptions();
     const [dados, setDados] = useState(inicial || {
-      cliente_id: clientes[0]?.id || '', titulo: '', numero_processo: '', area: '',
+      cliente_id: '', titulo: '', numero_processo: '', area: '',
       tribunal: '', instancia: '', valor_causa: '', status: 'em_andamento', descricao: '', data_inicio: ''
     });
     useEffect(() => {
       if (!inicial && clientes.length && !dados.cliente_id) {
-        setDados({ ...dados, cliente_id: clientes[0].id });
+        setDados((d) => ({ ...d, cliente_id: String(clientes[0].id) }));
       }
     }, [clientes]);
     function set(c, v) { setDados({ ...dados, [c]: v }); }
     async function submit(e) {
       e.preventDefault();
       try {
-        const payload = { ...dados, valor_causa: dados.valor_causa ? Number(dados.valor_causa) : null };
+        const payload = {
+          ...dados,
+          cliente_id: dados.cliente_id ? Number(dados.cliente_id) : null,
+          valor_causa: dados.valor_causa ? Number(dados.valor_causa) : null
+        };
         const r = inicial && inicial.id
           ? await BasckApi.casos.atualizar(inicial.id, payload)
           : await BasckApi.casos.criar(payload);
@@ -122,7 +126,7 @@
           </div>
           <div className="form-row">
             <Field label="Valor da causa (R$)"><input type="number" step="0.01" min="0" value={dados.valor_causa || ''} onChange={(e) => set('valor_causa', e.target.value)} /></Field>
-            <Field label="Data de início"><input type="date" value={dados.data_inicio || ''} onChange={(e) => set('data_inicio', e.target.value)} /></Field>
+            <Field label="Data de início"><BasckDateInput.DateInput value={dados.data_inicio || ''} onChange={(v) => set('data_inicio', v)} /></Field>
           </div>
           <Field label="Status">
             <select value={dados.status} onChange={(e) => set('status', e.target.value)}>
@@ -145,25 +149,31 @@
   function PrazoForm({ inicial, onSalvar, onCancelar, casoIdFixo = null }) {
     const casos = useCasosOptions();
     const [dados, setDados] = useState(inicial || {
-      caso_id: casoIdFixo || casos[0]?.id || '',
+      caso_id: casoIdFixo ? String(casoIdFixo) : '',
       titulo: '', descricao: '',
       data_inicio: new Date().toISOString().slice(0, 10),
       data_vencimento: '',
       tipo_dias: 'uteis', prioridade: 'normal', status: 'pendente'
     });
     useEffect(() => {
-      if (!inicial && casoIdFixo) setDados({ ...dados, caso_id: casoIdFixo });
+      if (!inicial && casoIdFixo) setDados((d) => ({ ...d, caso_id: String(casoIdFixo) }));
       if (!inicial && !casoIdFixo && casos.length && !dados.caso_id) {
-        setDados({ ...dados, caso_id: casos[0].id });
+        setDados((d) => ({ ...d, caso_id: String(casos[0].id) }));
       }
     }, [casos, casoIdFixo]);
     function set(c, v) { setDados({ ...dados, [c]: v }); }
     async function submit(e) {
       e.preventDefault();
       try {
+        const payload = {
+          ...dados,
+          caso_id: dados.caso_id ? Number(dados.caso_id) : null,
+          data_inicio: (dados.data_inicio || '').slice(0, 10),
+          data_vencimento: (dados.data_vencimento || '').slice(0, 10)
+        };
         const r = inicial && inicial.id
-          ? await BasckApi.prazos.atualizar(inicial.id, dados)
-          : await BasckApi.prazos.criar(dados);
+          ? await BasckApi.prazos.atualizar(inicial.id, payload)
+          : await BasckApi.prazos.criar(payload);
         onSalvar(r.prazo);
       } catch (err) { alert(err.message); }
     }
@@ -181,8 +191,8 @@
           <Field label="Título *"><input required value={dados.titulo} onChange={(e) => set('titulo', e.target.value)} maxLength={200} /></Field>
           <Field label="Descrição"><textarea value={dados.descricao || ''} onChange={(e) => set('descricao', e.target.value)} /></Field>
           <div className="form-row">
-            <Field label="Data de início *"><input type="date" required value={dados.data_inicio} onChange={(e) => set('data_inicio', e.target.value)} /></Field>
-            <Field label="Data de vencimento *"><input type="date" required value={dados.data_vencimento} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
+            <Field label="Data de início *"><BasckDateInput.DateInput required value={dados.data_inicio} onChange={(v) => set('data_inicio', v)} /></Field>
+            <Field label="Data de vencimento *"><BasckDateInput.DateInput required value={dados.data_vencimento} onChange={(v) => set('data_vencimento', v)} /></Field>
           </div>
           <div className="form-row">
             <Field label="Contagem">
@@ -231,7 +241,7 @@
           <Field label="Título *"><input required value={dados.titulo} onChange={(e) => set('titulo', e.target.value)} maxLength={200} /></Field>
           <Field label="Descrição"><textarea value={dados.descricao || ''} onChange={(e) => set('descricao', e.target.value)} /></Field>
           <div className="form-row">
-            <Field label="Vencimento"><input type="date" value={dados.data_vencimento || ''} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
+            <Field label="Vencimento"><BasckDateInput.DateInput value={dados.data_vencimento || ''} onChange={(v) => set('data_vencimento', v)} /></Field>
             <Field label="Prioridade">
               <select value={dados.prioridade} onChange={(e) => set('prioridade', e.target.value)}>
                 <option value="baixa">Baixa</option>
@@ -309,8 +319,8 @@
             </Field>
           </div>
           <div className="form-row">
-            <Field label="Vencimento"><input type="date" value={dados.data_vencimento || ''} onChange={(e) => set('data_vencimento', e.target.value)} /></Field>
-            <Field label="Data do pagamento"><input type="date" value={dados.data_pagamento || ''} onChange={(e) => set('data_pagamento', e.target.value)} /></Field>
+            <Field label="Vencimento"><BasckDateInput.DateInput value={dados.data_vencimento || ''} onChange={(v) => set('data_vencimento', v)} /></Field>
+            <Field label="Data do pagamento"><BasckDateInput.DateInput value={dados.data_pagamento || ''} onChange={(v) => set('data_pagamento', v)} /></Field>
           </div>
           <div className="form-row">
             <Field label="Forma">
@@ -391,5 +401,220 @@
     );
   }
 
-  global.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm };
+  function CompromissoForm({ inicial, onSalvar, onCancelar }) {
+    const casos = useCasosOptions();
+    const [dados, setDados] = useState(inicial || {
+      titulo: '', tipo: 'audiencia', data_hora: '', duracao_minutos: 60,
+      local: '', caso_id: '', observacoes: ''
+    });
+    function set(c, v) { setDados({ ...dados, [c]: v }); }
+    async function submit(e) {
+      e.preventDefault();
+      try {
+        // Garante data_hora no formato YYYY-MM-DDTHH:MM que o backend espera
+        let dh = (dados.data_hora || '').trim();
+        if (dh && !dh.includes('T')) dh = dh + 'T00:00';
+        const payload = {
+          ...dados,
+          data_hora: dh,
+          caso_id: dados.caso_id ? Number(dados.caso_id) : null,
+          duracao_minutos: dados.duracao_minutos ? Number(dados.duracao_minutos) : 60
+        };
+        const r = inicial && inicial.id
+          ? await BasckApi.compromissos.atualizar(inicial.id, payload)
+          : await BasckApi.compromissos.criar(payload);
+        onSalvar(r.compromisso || r);
+      } catch (err) { alert(err.message); }
+    }
+    return (
+      <form onSubmit={submit}>
+        <div className="modal-body">
+          <Field label="Título *"><input required value={dados.titulo} onChange={(e) => set('titulo', e.target.value)} maxLength={200} /></Field>
+          <div className="form-row">
+            <Field label="Tipo">
+              <select value={dados.tipo} onChange={(e) => set('tipo', e.target.value)}>
+                <option value="audiencia">Audiência</option>
+                <option value="reuniao">Reunião</option>
+                <option value="prazo_judicial">Prazo judicial</option>
+                <option value="sessao">Sessão</option>
+                <option value="diligencia">Diligência</option>
+                <option value="outro">Outro</option>
+              </select>
+            </Field>
+            <Field label="Duração (min)"><input type="number" min="0" value={dados.duracao_minutos || ''} onChange={(e) => set('duracao_minutos', e.target.value)} /></Field>
+          </div>
+          <Field label="Data e hora *"><BasckDateInput.DateInput required value={dados.data_hora || ''} onChange={(v) => set('data_hora', v)} placeholder="dd/mm/aaaa hh:mm" /></Field>
+          <Field label="Local"><input value={dados.local || ''} onChange={(e) => set('local', e.target.value)} maxLength={200} placeholder="Ex: Fórum da Comarca - Sala 4" /></Field>
+          <Field label="Caso vinculado">
+            <select value={dados.caso_id || ''} onChange={(e) => set('caso_id', e.target.value)}>
+              <option value="">— Nenhum —</option>
+              {casos.map((c) => <option key={c.id} value={c.id}>{c.titulo}</option>)}
+            </select>
+          </Field>
+          <Field label="Observações"><textarea value={dados.observacoes || ''} onChange={(e) => set('observacoes', e.target.value)} /></Field>
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">{inicial && inicial.id ? 'Salvar alterações' : 'Criar compromisso'}</button>
+        </div>
+      </form>
+    );
+  }
+
+  function KanbanForm({ inicial, onSalvar, onCancelar }) {
+    const casos = useCasosOptions();
+    const [dados, setDados] = useState(inicial || {
+      titulo: '', descricao: '', coluna: 'a_fazer', caso_id: ''
+    });
+    function set(c, v) { setDados({ ...dados, [c]: v }); }
+    async function submit(e) {
+      e.preventDefault();
+      try {
+        // Se ja existe cartao, atualiza direto. Senao, decide tipo/referencia_id:
+        // - caso selecionado: tipo=caso, referencia_id=caso_id
+        // - sem caso: cria tarefa automaticamente, tipo=tarefa, referencia_id=tarefa_id
+        if (inicial && inicial.id) {
+          const payload = {
+            coluna: dados.coluna,
+            descricao: dados.descricao,
+            titulo: dados.titulo
+          };
+          const r = await BasckApi.kanban.atualizar(inicial.id, payload);
+          onSalvar(r.cartao || r);
+        } else {
+          let tipo, referencia_id, prazo = null;
+          if (dados.caso_id) {
+            tipo = 'caso';
+            referencia_id = Number(dados.caso_id);
+          } else {
+            const t = await BasckApi.tarefas.criar({
+              titulo: dados.titulo,
+              descricao: dados.descricao || null,
+              prioridade: 'normal',
+              status: 'pendente'
+            });
+            tipo = 'tarefa';
+            referencia_id = t.tarefa.id;
+          }
+          const r = await BasckApi.kanban.criar({
+            coluna: dados.coluna,
+            posicao: 0,
+            tipo, referencia_id, titulo: dados.titulo,
+            descricao: dados.descricao || null, prazo
+          });
+          onSalvar(r.cartao || r);
+        }
+      } catch (err) { alert(err.message); }
+    }
+    return (
+      <form onSubmit={submit}>
+        <div className="modal-body">
+          <Field label="Título *"><input required value={dados.titulo} onChange={(e) => set('titulo', e.target.value)} maxLength={200} /></Field>
+          <Field label="Descrição"><textarea value={dados.descricao || ''} onChange={(e) => set('descricao', e.target.value)} rows={3} /></Field>
+          <div className="form-row">
+            <Field label="Coluna">
+              <select value={dados.coluna} onChange={(e) => set('coluna', e.target.value)}>
+                <option value="a_fazer">A fazer</option>
+                <option value="em_andamento">Em andamento</option>
+                <option value="em_revisao">Em revisão</option>
+                <option value="concluido">Concluído</option>
+              </select>
+            </Field>
+            <Field label="Vincular a caso">
+              <select value={dados.caso_id || ''} onChange={(e) => set('caso_id', e.target.value)}>
+                <option value="">— Nenhum —</option>
+                {casos.map((c) => <option key={c.id} value={c.id}>{c.titulo}</option>)}
+              </select>
+            </Field>
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">{inicial && inicial.id ? 'Salvar' : 'Criar cartão'}</button>
+        </div>
+      </form>
+    );
+  }
+
+  function IntegracaoForm({ inicial, tribunais = [], onSalvar, onCancelar }) {
+    const [dados, setDados] = useState(inicial || {
+      tribunal: '', identificador: '', segredo: ''
+    });
+    function set(c, v) { setDados({ ...dados, [c]: v }); }
+    async function submit(e) {
+      e.preventDefault();
+      try {
+        const payload = { ...dados, tipo_credencial: 'api_key' };
+        if (inicial && inicial.id && !dados.segredo) delete payload.segredo;
+        const r = inicial && inicial.id
+          ? await BasckApi.integracoes.atualizar(inicial.id, payload)
+          : await BasckApi.integracoes.criar(payload);
+        onSalvar(r.integracao || r);
+      } catch (err) { alert(err.message); }
+    }
+    return (
+      <form onSubmit={submit}>
+        <div className="modal-body">
+          <Field label="Tribunal *">
+            <select required value={dados.tribunal} onChange={(e) => set('tribunal', e.target.value)} disabled={inicial && inicial.id}>
+              <option value="">— Selecione —</option>
+              {tribunais.map((t) => <option key={t.id} value={t.id}>{t.nome}</option>)}
+            </select>
+          </Field>
+          <Field label="Número do processo *"><input required value={dados.identificador || ''} onChange={(e) => set('identificador', e.target.value)} placeholder="0000000-00.0000.0.00.0000" disabled={inicial && inicial.id} /></Field>
+          <Field label="API Key (DataJud) *">
+            <input type="password" required={!inicial} value={dados.segredo || ''} onChange={(e) => set('segredo', e.target.value)} placeholder={inicial ? 'Deixe em branco para manter a atual' : 'Cole sua API Key do DataJud'} />
+          </Field>
+          <div className="banner-info tiny">
+            🔒 A API Key é criptografada com AES-256-GCM antes de ser salva.
+          </div>
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">{inicial && inicial.id ? 'Salvar' : 'Cadastrar integração'}</button>
+        </div>
+      </form>
+    );
+  }
+
+  function OabForm({ inicial, onSalvar, onCancelar }) {
+    const [dados, setDados] = useState(inicial || { numero_oab: '', nome: '', uf: 'SP' });
+    function set(c, v) { setDados({ ...dados, [c]: v }); }
+    async function submit(e) {
+      e.preventDefault();
+      try {
+        const payload = { ...dados, numero_oab: dados.numero_oab.trim() };
+        const r = await BasckApi.integracoes.oab.criar(payload);
+        const oabId = r && r.oab && r.oab.id;
+        // Apos cadastrar, dispara verificacao automatica para sair de 'pendente'
+        let verificada;
+        if (oabId) {
+          try {
+            const v = await BasckApi.integracoes.oab.verificar(oabId);
+            verificada = v && v.item;
+          } catch (_) { /* mantem como pendente se falhar */ }
+        }
+        onSalvar(verificada || (r && r.oab) || payload);
+      } catch (err) { alert(err.message); }
+    }
+    return (
+      <form onSubmit={submit}>
+        <div className="modal-body">
+          <Field label="Número da OAB *"><input required value={dados.numero_oab} onChange={(e) => set('numero_oab', e.target.value)} placeholder="123456" /></Field>
+          <Field label="Nome do advogado"><input value={dados.nome || ''} onChange={(e) => set('nome', e.target.value)} /></Field>
+          <Field label="UF *">
+            <select required value={dados.uf} onChange={(e) => set('uf', e.target.value)}>
+              {['AC','AL','AP','AM','BA','CE','DF','ES','GO','MA','MT','MS','MG','PA','PB','PR','PE','PI','RJ','RN','RS','RO','RR','SC','SP','SE','TO'].map((u) => <option key={u} value={u}>{u}</option>)}
+            </select>
+          </Field>
+        </div>
+        <div className="modal-foot">
+          <button type="button" className="btn ghost" onClick={onCancelar}>Cancelar</button>
+          <button type="submit" className="btn primary">Monitorar OAB</button>
+        </div>
+      </form>
+    );
+  }
+
+  window.BasckModals = { Modal, ClienteForm, CasoForm, PrazoForm, TarefaForm, LancamentoForm, DocumentoForm, CompromissoForm, KanbanForm, IntegracaoForm, OabForm };
 })(window);

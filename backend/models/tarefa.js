@@ -1,6 +1,6 @@
 // backend/models/tarefa.js
-
 const { getDb } = require('../db/init');
+const KanbanModel = require('./kanban');
 
 function rowsFrom(stmt, ...args) {
   return stmt.all(...args).map((r) => Object.fromEntries(Object.entries(r)));
@@ -21,7 +21,14 @@ class TarefaModel {
       usuario_id, dados.caso_id || null, dados.titulo, dados.descricao || null,
       dados.data_vencimento || null, dados.prioridade || 'normal', dados.status || 'pendente'
     );
-    return this.buscarPorId(r.lastInsertRowid, usuario_id);
+    const id = r.lastInsertRowid;
+    // O cartao do Kanban eh criado pelo KanbanForm (POST /api/kanban) na UI,
+    // evitando duplicidade. Atualizar coluna/posicao do cartao espelhado se existir.
+    KanbanModel.atualizarPorReferencia(usuario_id, 'tarefa', Number(id), {
+      titulo: dados.titulo,
+      prazo: dados.data_vencimento || null
+    });
+    return this.buscarPorId(id, usuario_id);
   }
 
   static buscarPorId(id, usuario_id) {
@@ -61,6 +68,11 @@ class TarefaModel {
       dados.status || 'pendente', dados.concluido_em || null,
       id, usuario_id
     );
+    // Espelha mudancas no Kanban
+    KanbanModel.atualizarPorReferencia(usuario_id, 'tarefa', Number(id), {
+      titulo: dados.titulo,
+      prazo: dados.data_vencimento || null
+    });
     return this.buscarPorId(id, usuario_id);
   }
 
@@ -69,10 +81,35 @@ class TarefaModel {
       UPDATE tarefas SET status = 'concluida', concluido_em = datetime('now'), atualizado_em = datetime('now')
       WHERE id = ? AND usuario_id = ?
     `).run(id, usuario_id);
+    // Move cartao do Kanban para coluna 'concluido' (se existir)
+    const cartao = rowFrom(getDb().prepare(
+      "SELECT id FROM kanban_cartoes WHERE usuario_id = ? AND tipo = 'tarefa' AND referencia_id = ?"
+    ), usuario_id, id);
+    if (cartao) {
+      getDb().prepare("UPDATE kanban_cartoes SET coluna = 'concluido', atualizado_em = datetime('now') WHERE id = ?")
+        .run(cartao.id);
+    }
+    return this.buscarPorId(id, usuario_id);
+  }
+
+  static reabrir(id, usuario_id) {
+    getDb().prepare(`
+      UPDATE tarefas SET status = 'pendente', concluido_em = NULL, atualizado_em = datetime('now')
+      WHERE id = ? AND usuario_id = ?
+    `).run(id, usuario_id);
+    const cartao = rowFrom(getDb().prepare(
+      "SELECT id FROM kanban_cartoes WHERE usuario_id = ? AND tipo = 'tarefa' AND referencia_id = ?"
+    ), usuario_id, id);
+    if (cartao) {
+      getDb().prepare("UPDATE kanban_cartoes SET coluna = 'a_fazer', atualizado_em = datetime('now') WHERE id = ?")
+        .run(cartao.id);
+    }
     return this.buscarPorId(id, usuario_id);
   }
 
   static remover(id, usuario_id) {
+    // Remove o cartao kanban espelhado
+    KanbanModel.removerPorReferencia(usuario_id, 'tarefa', Number(id));
     return getDb().prepare('DELETE FROM tarefas WHERE id = ? AND usuario_id = ?').run(id, usuario_id);
   }
 }

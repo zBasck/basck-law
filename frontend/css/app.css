@@ -546,3 +546,198 @@ input, select, textarea { font-family: inherit; color: inherit; }
   pointer-events: none;
   font-family: 'Inter', sans-serif;
 }
+
+/* =================== COMPROMISSOS =================== */
+.compromissos-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+  margin-top: 16px;
+}
+.compromisso-card {
+  background: var(--bg-card, #1a1a1f);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 8px;
+  padding: 16px;
+}
+.compromisso-tipo {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+  background: rgba(201, 165, 90, 0.15);
+  color: var(--gold, #c9a55a);
+}
+.compromisso-tipo.tipo-audiencia { background: rgba(201, 165, 90, 0.2); color: #c9a55a; }
+.compromisso-tipo.tipo-prazo_fatal, .compromisso-tipo.tipo-prazo_judicial { background: rgba(199, 90, 74, 0.2); color: #c75a4a; }
+.compromisso-tipo.tipo-sessao { background: rgba(212, 160, 69, 0.2); color: #d4a045; }
+.compromisso-tipo.tipo-outro { background: rgba(255,255,255,0.06); color: #999; }
+.compromisso-tipo.tipo-reuniao { background: rgba(59, 130, 246, 0.2); color: #60a5fa; }
+.compromisso-tipo.tipo-diligencia { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.compromisso-titulo { font-size: 16px; font-weight: 600; margin: 4px 0 8px; }
+.compromisso-data { font-size: 13px; color: #c9a55a; margin-bottom: 6px; font-weight: 500; }
+.compromisso-caso, .compromisso-local, .compromisso-obs { font-size: 12px; color: #999; margin-top: 4px; }
+.compromisso-acoes { display: flex; gap: 8px; margin-top: 12px; padding-top: 12px; border-top: 1px solid rgba(255,255,255,0.06); }
+.compromisso-acoes .btn { font-size: 12px; padding: 4px 10px; }
+
+/* =================== KANBAN =================== */
+.kanban-board {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 12px;
+  margin-top: 16px;
+  min-height: 400px;
+}
+.kanban-coluna {
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+  padding: 12px;
+  min-height: 300px;
+}
+.kanban-coluna-head {
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  padding-bottom: 8px;
+  margin-bottom: 8px;
+  border-bottom: 2px solid;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.kanban-coluna-head .badge {
+  margin-left: auto;
+  background: rgba(255,255,255,0.08);
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 11px;
+}
+.kanban-coluna-body { display: flex; flex-direction: column; gap: 8px; min-height: 200px; }
+.kanban-cartao {
+  background: var(--bg-card, #1a1a1f);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: grab;
+  transition: transform 0.1s, box-shadow 0.1s;
+}
+.kanban-cartao:hover { box-shadow: 0 4px 12px rgba(0,0,0,0.3); }
+.kanban-cartao:active { cursor: grabbing; transform: scale(0.98); }
+.kanban-cartao-caso { font-size: 10px; color: #888; margin-bottom: 4px; }
+.kanban-cartao-titulo { font-size: 13px; font-weight: 500; margin-bottom: 4px; }
+.kanban-cartao-desc { font-size: 11px; color: #999; margin-top: 4px; }
+.kanban-cartao-acoes { display: flex; gap: 4px; margin-top: 6px; opacity: 0.6; }
+.kanban-cartao:hover .kanban-cartao-acoes { opacity: 1; }
+.kanban-cartao-acoes .btn.tiny { padding: 2px 6px; font-size: 10px; }
+
+/* =================== INTEGRAÇÕES =================== */
+.banner-info {
+  background: linear-gradient(90deg, rgba(201, 165, 90, 0.1), rgba(201, 165, 90, 0.05));
+  border-left: 3px solid var(--gold, #c9a55a);
+  padding: 12px 16px;
+  border-radius: 4px;
+  font-size: 13px;
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+.banner-info.tiny { font-size: 12px; padding: 8px 12px; margin-top: 8px; }
+.banner-info a { color: var(--gold, #c9a55a); text-decoration: underline; }
+.card-head { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.card-head h3 { margin: 0; }
+.table { width: 100%; border-collapse: collapse; }
+.table th, .table td { padding: 10px 12px; text-align: left; border-bottom: 1px solid rgba(255,255,255,0.06); font-size: 13px; }
+.table th { color: #999; font-weight: 500; text-transform: uppercase; font-size: 11px; letter-spacing: 0.05em; }
+.table .acoes { display: flex; gap: 4px; }
+.badge-tiny {
+  display: inline-block;
+  background: rgba(16, 185, 129, 0.15);
+  color: #34d399;
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  margin-left: 6px;
+}
+.badge-situacao {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: rgba(255,255,255,0.08);
+}
+.badge-situacao.sit-regular { background: rgba(16, 185, 129, 0.2); color: #34d399; }
+.badge-situacao.sit-suspensa { background: rgba(245, 158, 11, 0.2); color: #fbbf24; }
+.badge-situacao.sit-cancelada { background: rgba(199, 90, 74, 0.2); color: #f87171; }
+.badge-situacao.sit-desconhecida { background: rgba(255,255,255,0.05); color: #888; }
+.resultado-json {
+  background: #0a0a0f;
+  color: #c9a55a;
+  padding: 12px;
+  border-radius: 4px;
+  overflow: auto;
+  max-height: 400px;
+  font-size: 11px;
+  font-family: monospace;
+}
+
+/* =================== DATE PICKER =================== */
+.bk-date { position: relative; display: inline-block; width: 100%; }
+.bk-date input { width: 100%; padding-right: 32px; box-sizing: border-box; }
+.bk-date-btn {
+  position: absolute; right: 4px; top: 50%; transform: translateY(-50%);
+  background: transparent; border: none; color: var(--gold, #c9a55a);
+  font-size: 16px; cursor: pointer; padding: 4px 8px;
+}
+.bk-date-pop {
+  position: absolute; top: calc(100% + 4px); left: 0; z-index: 100;
+  background: #1a1a1f; border: 1px solid rgba(201, 165, 90, 0.3);
+  border-radius: 6px; padding: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.4); min-width: 260px;
+}
+.bk-date-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 8px; }
+.bk-date-nav button { background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #c9a55a; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 14px; }
+.bk-date-nav button:hover { background: rgba(201, 165, 90, 0.1); }
+.bk-date-mes { font-weight: 600; font-size: 13px; }
+.bk-date-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.bk-date-dh { text-align: center; font-size: 10px; color: #888; padding: 4px; font-weight: 600; }
+.bk-date-d {
+  text-align: center; padding: 6px 4px;
+  background: transparent; border: 1px solid transparent;
+  color: #ddd; font-size: 12px; border-radius: 3px; cursor: pointer;
+}
+.bk-date-d:hover:not(:disabled) { background: rgba(201, 165, 90, 0.15); }
+.bk-date-d.fora { color: #555; }
+.bk-date-d.hoje { border-color: rgba(201, 165, 90, 0.4); }
+.bk-date-d.sel { background: var(--gold, #c9a55a); color: #0a0a0f; font-weight: 600; }
+.bk-date-d:disabled { opacity: 0.3; cursor: not-allowed; }
+.bk-date-foot { display: flex; gap: 6px; margin-top: 8px; padding-top: 8px; border-top: 1px solid rgba(255,255,255,0.06); }
+.bk-date-foot button { flex: 1; background: transparent; border: 1px solid rgba(255,255,255,0.1); color: #c9a55a; padding: 4px; border-radius: 3px; font-size: 11px; cursor: pointer; }
+.bk-date-foot button:hover { background: rgba(201, 165, 90, 0.1); }
+
+/* =================== TOOLBAR/CHIP =================== */
+.toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 12px; }
+.toolbar-grupo { display: flex; gap: 6px; flex-wrap: wrap; }
+.chip {
+  padding: 6px 14px;
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 20px;
+  color: #999;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.chip:hover { border-color: rgba(201, 165, 90, 0.4); color: #c9a55a; }
+.chip.active { background: var(--gold, #c9a55a); color: #0a0a0f; border-color: var(--gold, #c9a55a); font-weight: 600; }
+.empty { text-align: center; padding: 40px 20px; color: #666; font-size: 13px; background: rgba(255,255,255,0.02); border-radius: 6px; border: 1px dashed rgba(255,255,255,0.08); }
+.muted { color: #888; }
+.mt-3 { margin-top: 16px; }
+.btn.tiny { padding: 3px 8px; font-size: 11px; }
+.btn.danger { color: #c75a4a; }
+.btn.danger:hover { background: rgba(199, 90, 74, 0.1); }

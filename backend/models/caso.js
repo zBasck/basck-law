@@ -31,7 +31,32 @@ class CasoModel {
       dados.descricao || null,
       dados.data_inicio || null
     );
-    return this.buscarPorId(r.lastInsertRowid, usuario_id);
+    const casoId = r.lastInsertRowid;
+    // Auto-vinculacao: garante que existe entrada em oab_monitoramento para
+    // a OAB do usuario (criada em branco se necessario) e cria vinculo
+    // caso <-> OAB para o painel de monitoramento.
+    try {
+      const db = getDb();
+      const usuario = db.prepare('SELECT oab FROM usuarios WHERE id = ?').get(usuario_id);
+      if (usuario && usuario.oab) {
+        const m = String(usuario.oab).match(/^([0-9]+)[\s\-]?([A-Za-z]{2})?/);
+        if (m) {
+          const numeroOab = m[1];
+          const ufOab = (m[2] || dados.uf || dados.tribunal || 'BR').toUpperCase().slice(0, 2);
+          const existente = db.prepare('SELECT id FROM oab_monitoramento WHERE usuario_id = ? AND numero_oab = ? AND uf = ?').get(usuario_id, numeroOab, ufOab);
+          let oabId;
+          if (existente) {
+            oabId = existente.id;
+          } else {
+            const ins = db.prepare(`INSERT INTO oab_monitoramento (usuario_id, numero_oab, uf, nome, situacao) VALUES (?, ?, ?, ?, 'pendente')`).run(usuario_id, numeroOab, ufOab, 'OAB do escritorio');
+            oabId = ins.lastInsertRowid;
+          }
+          // Vincula o caso a OAB no monitoramento
+          db.prepare(`UPDATE casos SET oab_monitoramento_id = ? WHERE id = ? AND usuario_id = ?`).run(oabId, casoId, usuario_id);
+        }
+      }
+    } catch (_) { /* silencioso: nao quebra criacao do caso */ }
+    return this.buscarPorId(casoId, usuario_id);
   }
 
   static buscarPorId(id, usuario_id) {
