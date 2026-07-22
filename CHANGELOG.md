@@ -102,3 +102,12 @@ O versionamento segue SemVer.
 - Nova rota GET /api/integracoes/monitoramento.
 - Novo client BasckApi.integracoes.monitoramento().
 
+
+## [1.3.2] - 2026-07-22
+
+### Corrigido
+- **Monitoramento de OAB invisivel na UI**: o endpoint `GET /api/integracoes/monitoramento`
+  existia no backend e o `BasckApi.integracoes.monitoramento()` existia no frontend,
+  mas o `IntegracoesView` nao o consumia. Agora a view carrega OABs + casos vinculados
+  em paralelo e renderiza a secao "Processos monitorados" mostrando caso, numero do
+  processo, tribunal, cliente, OAB vinculada e status.
